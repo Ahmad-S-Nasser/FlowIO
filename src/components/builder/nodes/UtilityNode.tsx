@@ -1,8 +1,9 @@
-import { Handle, Position } from '@xyflow/react';
-import { RotateCw, ShieldAlert } from 'lucide-react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { RotateCw, ShieldAlert, X } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function UtilityNode({ id, data, isConnectable, selected }: any) {
+    const { deleteElements } = useReactFlow();
     const isRetry = data.label === 'Retry Step';
     const Icon = isRetry ? RotateCw : ShieldAlert;
     const bgColorClass = isRetry ? 'bg-status-info' : 'bg-status-error';
@@ -36,6 +37,17 @@ export function UtilityNode({ id, data, isConnectable, selected }: any) {
                         <div className="text-xs text-text-secondary mt-1 line-clamp-2">{data.description}</div>
                     ) : null)}
                 </div>
+
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
             <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-white border-2 border-text-secondary rounded-full -bottom-1.5 z-10" isConnectable={isConnectable} />

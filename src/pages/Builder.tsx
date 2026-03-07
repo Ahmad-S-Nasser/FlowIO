@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dagre from 'dagre';
-import { Download, Upload, ArrowLeft, Play, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw } from 'lucide-react';
+import { Trash2, Download, Upload, ArrowLeft, Play, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
@@ -327,6 +327,22 @@ function BuilderFlow() {
         setSelectedNode(node);
     }, []);
 
+    const onNodesDelete = useCallback((deletedNodes: Node[]) => {
+        if (selectedNode && deletedNodes.some(n => n.id === selectedNode.id)) {
+            setSelectedNode(null);
+        }
+    }, [selectedNode]);
+
+    const onEdgesDelete = useCallback((deletedEdges: Edge[]) => {
+        // Handle edge deletions if needed
+    }, []);
+
+    const handleDeleteNode = useCallback((nodeId: string) => {
+        setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+        setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+        setSelectedNode(null);
+    }, [setNodes, setEdges]);
+
     const onPaneClick = useCallback(() => {
         setSelectedNode(null);
     }, []);
@@ -607,6 +623,8 @@ function BuilderFlow() {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
+                        onNodesDelete={onNodesDelete}
+                        onEdgesDelete={onEdgesDelete}
                         onNodeClick={onNodeClick}
                         onPaneClick={onPaneClick}
                         onDrop={onDrop}
@@ -898,6 +916,17 @@ function BuilderFlow() {
                                             </>
                                         );
                                     })()}
+
+                                    <div className="pt-6 border-t border-border">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full text-status-error border-status-error/20 hover:bg-status-error/5 hover:text-status-error"
+                                            onClick={() => handleDeleteNode(selectedNode.id)}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete Block
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -1,8 +1,10 @@
-import { Handle, Position } from '@xyflow/react';
-import { Zap, AlertTriangle } from 'lucide-react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Zap, AlertTriangle, X } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function TriggerNode({ id, data }: any) {
+    const { deleteElements } = useReactFlow();
+
     return (
         <div className="relative group font-sans">
             <div className="w-[320px] bg-white rounded-[32px] shadow-sm border border-border flex items-stretch overflow-visible transition-all hover:shadow-md">
@@ -35,6 +37,17 @@ export function TriggerNode({ id, data }: any) {
                         ))}
                     </div>
                 </div>
+
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute top-0 right-4 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
             <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-status-success border-2 border-white" />

@@ -1,8 +1,9 @@
-import { Handle, Position } from '@xyflow/react';
-import { AlertTriangle } from 'lucide-react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { AlertTriangle, X } from 'lucide-react';
 import { getToolByActionId, IN_MEMORY_INTEGRATIONS } from '../../../lib/integrations';
 
 interface ToolActionNodeProps {
+    id: string; // Add id
     data: {
         label: string;
         actionId: string;
@@ -14,12 +15,13 @@ interface ToolActionNodeProps {
     selected: boolean;
 }
 
-export function ToolActionNode({ data, isConnectable, selected }: ToolActionNodeProps) {
+export function ToolActionNode({ id, data, isConnectable, selected }: ToolActionNodeProps) {
+    const { deleteElements } = useReactFlow();
     const tool = getToolByActionId(data.actionId) || IN_MEMORY_INTEGRATIONS[0];
     const Icon = tool.icon;
 
     return (
-        <div className={`relative flex flex-col min-w-[280px] bg-white rounded-md shadow-node overflow-visible transition-all duration-200 border-2 
+        <div className={`relative group flex flex-col min-w-[280px] bg-white rounded-md shadow-node overflow-visible transition-all duration-200 border-2 
                         ${selected ? 'border-primary shadow-node-selected' : 'border-transparent'}`}
         >
             {/* IN Handle */}
@@ -72,6 +74,17 @@ export function ToolActionNode({ data, isConnectable, selected }: ToolActionNode
                     </div>
                 )}
             </div>
+
+            {/* Delete Button */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    deleteElements({ nodes: [{ id }] });
+                }}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+            >
+                <X className="w-3 h-3" />
+            </button>
 
             {/* Default OUT Handle */}
             <Handle

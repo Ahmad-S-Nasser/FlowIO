@@ -1,8 +1,9 @@
-import { Handle, Position } from '@xyflow/react';
-import { Mail, CheckSquare, AlertTriangle } from 'lucide-react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Mail, CheckSquare, AlertTriangle, X } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function ActionNode({ id, data }: any) {
+    const { deleteElements } = useReactFlow();
     const Icon = data.label === 'Create Task' ? CheckSquare : Mail;
 
     return (
@@ -37,6 +38,17 @@ export function ActionNode({ id, data }: any) {
                         ))}
                     </div>
                 </div>
+
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
             <Handle type="target" position={Position.Top} className="w-3 h-3 bg-status-info border-2 border-white" />

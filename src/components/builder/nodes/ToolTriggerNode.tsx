@@ -1,6 +1,6 @@
 import React from 'react';
-import { Handle, Position } from '@xyflow/react';
-import { AlertTriangle } from 'lucide-react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { AlertTriangle, X } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 import { getToolByTriggerId, IN_MEMORY_INTEGRATIONS } from '../../../lib/integrations';
 
@@ -18,6 +18,7 @@ interface ToolTriggerNodeProps {
 }
 
 export function ToolTriggerNode({ id, data, isConnectable, selected }: ToolTriggerNodeProps) {
+    const { deleteElements } = useReactFlow();
     const tool = getToolByTriggerId(data.triggerId) || IN_MEMORY_INTEGRATIONS[0];
     const Icon = tool.icon;
 
@@ -59,6 +60,17 @@ export function ToolTriggerNode({ id, data, isConnectable, selected }: ToolTrigg
                         </div>
                     ))}
                 </div>
+
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute top-0 right-4 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
             <Handle type="source" position={Position.Bottom} className="w-3 h-3 border-2 border-white" style={{ backgroundColor: tool.color }} isConnectable={isConnectable} />
