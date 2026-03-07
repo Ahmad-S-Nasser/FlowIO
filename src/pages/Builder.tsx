@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dagre from 'dagre';
-import { ArrowLeft, Play, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw } from 'lucide-react';
+import { Download, Upload, ArrowLeft, Play, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
@@ -29,6 +29,7 @@ import { UtilityNode } from '../components/builder/nodes/UtilityNode';
 import { AIPromptModal } from '../components/builder/AIPromptModal';
 import { IN_MEMORY_INTEGRATIONS, getToolActionById, getToolTriggerById } from '../lib/integrations';
 import { mockTemplateFlows } from '../lib/mock';
+import { exportFlowToJson, saveFlowToLocal, getFlowFromLocal, type WorkflowSaveData } from '../lib/workflowStorage';
 
 const nodeTypes = {
     trigger: TriggerNode,
@@ -80,12 +81,15 @@ function BuilderFlow() {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { setCenter } = useReactFlow();
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [isTestModalOpen, setIsTestModalOpen] = useState(false);
     const [testState, setTestState] = useState<'idle' | 'running' | 'success'>('idle');
     const [workflowStatus, setWorkflowStatus] = useState<'Draft' | 'Active'>('Draft');
+    const [workflowName, setWorkflowName] = useState(id === 'new' ? 'Untitled Workflow' : 'Lead Follow-up');
 
     // AI Assistant State
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -118,15 +122,89 @@ function BuilderFlow() {
         }
     }, [nodes.length, edges.length, setNodes]);
 
-    // Initialize from template if present
+    // Initialize from template or local storage
     useEffect(() => {
         const templateId = searchParams.get('template');
+        // If there's an existing id from the URL, try to load it first
+        if (id && id !== 'new') {
+            const localFlow = getFlowFromLocal(id);
+            if (localFlow) {
+                setNodes(localFlow.nodes);
+                setEdges(localFlow.edges);
+                setWorkflowName(localFlow.name);
+                setWorkflowStatus(localFlow.status);
+                return;
+            }
+        }
+
         if (templateId && mockTemplateFlows[templateId]) {
             const flow = mockTemplateFlows[templateId];
             setNodes(flow.nodes);
             setEdges(flow.edges);
         }
-    }, [searchParams, setNodes, setEdges]);
+    }, [id, searchParams, setNodes, setEdges]);
+
+    const handleSaveLocal = () => {
+        if (!id) return;
+        saveFlowToLocal({
+            id: id === 'new' ? 'new_saved' : id,
+            name: workflowName,
+            status: workflowStatus,
+            nodes,
+            edges,
+            updatedAt: new Date().toISOString()
+        });
+        // In reality, this might show a toast
+    };
+
+    const handleExport = () => {
+        exportFlowToJson({
+            id: id || 'export',
+            name: workflowName,
+            status: workflowStatus,
+            nodes,
+            edges,
+            updatedAt: new Date().toISOString()
+        });
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const result = event.target?.result as string;
+                const importedFlow = JSON.parse(result) as WorkflowSaveData;
+
+                if (importedFlow && importedFlow.nodes && importedFlow.edges) {
+                    setNodes(importedFlow.nodes);
+                    setEdges(importedFlow.edges);
+                    if (importedFlow.name) setWorkflowName(importedFlow.name);
+                    if (importedFlow.status) setWorkflowStatus(importedFlow.status);
+
+                    // Reset selected node
+                    setSelectedNode(null);
+                } else {
+                    alert('Invalid workflow JSON file. Missing nodes or edges.');
+                }
+            } catch (error) {
+                alert('Failed to parse the JSON file.');
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+
+        // Reset input so the same file could be selected again
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
     const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds)), [setEdges]);
 
@@ -309,12 +387,31 @@ function BuilderFlow() {
                     </button>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="font-bold text-text-primary">{id === 'new' ? 'Untitled Workflow' : 'Lead Follow-up'}</h1>
+                            <input
+                                value={workflowName}
+                                onChange={(e) => setWorkflowName(e.target.value)}
+                                className="font-bold text-text-primary bg-transparent outline-none border-b border-transparent hover:border-gray-300 focus:border-primary transition-colors focus:bg-background-canvas rounded px-1"
+                            />
                             <Badge variant={workflowStatus === 'Draft' ? 'default' : 'success'}>{workflowStatus}</Badge>
                         </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 lg:gap-4">
+                    <Button variant="ghost" size="sm" onClick={handleImportClick} title="Import Flow JSON" className="hidden sm:flex px-2">
+                        <Upload className="w-4 h-4" />
+                    </Button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".json"
+                        className="hidden"
+                    />
+                    <Button variant="ghost" size="sm" onClick={handleExport} title="Export Flow JSON" className="hidden sm:flex px-2">
+                        <Download className="w-4 h-4" />
+                    </Button>
+                    <div className="w-px h-6 bg-border hidden sm:block mx-1"></div>
+
                     <Button
                         variant="secondary"
                         size="sm"
@@ -329,13 +426,13 @@ function BuilderFlow() {
                         <Play className="w-4 h-4 mr-2" />
                         Test
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setWorkflowStatus('Draft')}>
+                    <Button variant="outline" size="sm" onClick={() => { setWorkflowStatus('Draft'); handleSaveLocal(); }}>
                         Save Draft
                     </Button>
                     <Button
                         size="sm"
                         disabled={invalidNodes.length > 0 || nodes.length === 0}
-                        onClick={() => setWorkflowStatus('Active')}
+                        onClick={() => { setWorkflowStatus('Active'); handleSaveLocal(); }}
                     >
                         Publish
                     </Button>
