@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dagre from 'dagre';
 import { ArrowLeft, Play, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -13,9 +13,10 @@ import {
     useNodesState,
     useEdgesState,
     addEdge,
-    ReactFlowProvider,
-    useReactFlow
+    useReactFlow,
+    ReactFlowProvider
 } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import type { Connection, Edge, Node } from '@xyflow/react';
 import type { AIGeneratedFlow } from '../lib/aiGenerator';
 import { generateFlowFromPrompt as genFlow } from '../lib/aiGenerator';
@@ -27,6 +28,7 @@ import { ToolTriggerNode } from '../components/builder/nodes/ToolTriggerNode';
 import { UtilityNode } from '../components/builder/nodes/UtilityNode';
 import { AIPromptModal } from '../components/builder/AIPromptModal';
 import { IN_MEMORY_INTEGRATIONS, getToolActionById, getToolTriggerById } from '../lib/integrations';
+import { mockTemplateFlows } from '../lib/mock';
 
 const nodeTypes = {
     trigger: TriggerNode,
@@ -74,6 +76,7 @@ const getId = () => `${idCtr++}`;
 function BuilderFlow() {
     const navigate = useNavigate();
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { setCenter } = useReactFlow();
 
@@ -115,6 +118,16 @@ function BuilderFlow() {
         }
     }, [nodes.length, edges.length, setNodes]);
 
+    // Initialize from template if present
+    useEffect(() => {
+        const templateId = searchParams.get('template');
+        if (templateId && mockTemplateFlows[templateId]) {
+            const flow = mockTemplateFlows[templateId];
+            setNodes(flow.nodes);
+            setEdges(flow.edges);
+        }
+    }, [searchParams, setNodes, setEdges]);
+
     const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
     const runTestSimulation = () => {
@@ -125,12 +138,11 @@ function BuilderFlow() {
     };
 
     const addInitialNode = (type: string, label: string) => {
-        const isTrigger = type === 'trigger';
         const newNode: Node = {
             id: getId(),
             type,
             position: { x: 250, y: 100 },
-            data: { label, description: 'Configure this node in the right panel.', isConfigured: isTrigger },
+            data: { label, description: 'Configure this node in the right panel.', isConfigured: type.includes('trigger') },
         };
         setNodes((nds) => nds.concat(newNode));
         setSelectedNode(newNode);
@@ -267,7 +279,6 @@ function BuilderFlow() {
                 y: event.clientY - reactFlowBounds.top - 40,
             };
 
-            const isTrigger = type === 'trigger' || type === 'tool_trigger';
             const newNode: Node = {
                 id: getId(),
                 type,
@@ -550,6 +561,9 @@ function BuilderFlow() {
                                 </div>
                             </div>
                         )}
+
+                        <Controls className="border-border shadow-soft rounded-lg overflow-hidden" />
+
                     </ReactFlow>
 
                     {/* Bottom Validation Bar */}
