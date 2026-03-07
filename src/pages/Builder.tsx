@@ -128,7 +128,7 @@ function BuilderFlow() {
         }
     }, [searchParams, setNodes, setEdges]);
 
-    const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+    const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds)), [setEdges]);
 
     const runTestSimulation = () => {
         setTestState('running');
@@ -514,6 +514,8 @@ function BuilderFlow() {
                         onPaneClick={onPaneClick}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
+                        defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
+                        connectionLineType={'smoothstep' as any}
                         fitView
                         className="bg-background-canvas"
                     >

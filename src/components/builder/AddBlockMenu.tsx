@@ -38,7 +38,7 @@ export function AddBlockMenu({ sourceId, branch }: { sourceId: string, branch?: 
     };
 
     return (
-        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center group/menu">
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center group/menu">
             <button
                 className={`w-8 h-8 bg-white border shadow-sm rounded-full flex items-center justify-center text-text-secondary hover:text-primary hover:border-primary hover:shadow-md transition-all ${isOpen ? 'border-primary text-primary opacity-100 scale-110' : 'border-border opacity-0 group-hover:opacity-100'}`}
                 onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
