@@ -1,0 +1,44 @@
+import { Handle, Position } from '@xyflow/react';
+import { Zap, AlertTriangle } from 'lucide-react';
+import { AddBlockMenu } from '../AddBlockMenu';
+
+export function TriggerNode({ id, data }: any) {
+    return (
+        <div className="relative group font-sans">
+            <div className="w-[320px] bg-white rounded-[32px] shadow-sm border border-border flex items-stretch overflow-visible transition-all hover:shadow-md">
+                {/* Left Stripe */}
+                <div className="w-6 bg-status-success shrink-0 rounded-l-[32px]"></div>
+
+                <div className="p-4 flex-1 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
+                        <Zap className="w-6 h-6 text-status-success fill-status-success/20" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-status-success uppercase tracking-wider mb-1 flex items-center justify-between">
+                            Trigger
+                            {(!data.isConfigured && data.label !== 'Trigger') && <AlertTriangle className="w-3 h-3 text-status-warning" />}
+                        </div>
+                        <div className="text-sm font-bold text-text-primary truncate">{data.label || 'Select Trigger'}</div>
+
+                        {data.configSummary ? (
+                            <div className="mt-2 text-xs bg-status-success/5 rounded p-2 text-text-secondary border border-status-success/10 space-y-1">
+                                {Object.entries(data.configSummary).map(([k, v]) => (
+                                    <div key={k} className="truncate"><span className="font-medium text-text-primary">{k}:</span> {v as React.ReactNode}</div>
+                                ))}
+                            </div>
+                        ) : (data.description ? (
+                            <div className="text-xs text-text-secondary mt-1 line-clamp-2">{data.description}</div>
+                        ) : (
+                            <div className="text-xs text-status-warning mt-1 flex items-center gap-1">
+                                Configuration incomplete
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-status-success border-2 border-white" />
+            <AddBlockMenu sourceId={id} />
+        </div>
+    );
+}
