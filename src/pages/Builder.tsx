@@ -749,6 +749,136 @@ function BuilderFlow() {
                                         />
                                     </div>
 
+                                    {/* Trigger Node Fields */}
+                                    {selectedNode.type === 'trigger' && selectedNode.data.label === 'Schedule' && (
+                                        <>
+                                            <div className="space-y-2 mt-4 pt-4 border-t border-border">
+                                                <label className="text-sm font-medium text-text-primary">Recurrence</label>
+                                                <select
+                                                    className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                    value={selectedNode.data.recurrence as string || 'daily'}
+                                                    onChange={e => updateSelectedNodeData({ recurrence: e.target.value })}
+                                                >
+                                                    <option value="hourly">Hourly</option>
+                                                    <option value="daily">Daily</option>
+                                                    <option value="weekly">Weekly</option>
+                                                    <option value="monthly">Monthly</option>
+                                                </select>
+                                            </div>
+                                            {selectedNode.data.recurrence === 'hourly' && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Every X Hours</label>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={24}
+                                                        value={selectedNode.data.hoursInterval as string || '1'}
+                                                        onChange={e => updateSelectedNodeData({ hoursInterval: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {selectedNode.data.recurrence === 'weekly' && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Day of Week</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={selectedNode.data.dayOfWeek as string || 'monday'}
+                                                        onChange={e => updateSelectedNodeData({ dayOfWeek: e.target.value })}
+                                                    >
+                                                        <option value="monday">Monday</option>
+                                                        <option value="tuesday">Tuesday</option>
+                                                        <option value="wednesday">Wednesday</option>
+                                                        <option value="thursday">Thursday</option>
+                                                        <option value="friday">Friday</option>
+                                                        <option value="saturday">Saturday</option>
+                                                        <option value="sunday">Sunday</option>
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            {selectedNode.data.recurrence === 'monthly' && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Day of Month</label>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={31}
+                                                        value={selectedNode.data.dayOfMonth as string || '1'}
+                                                        onChange={e => updateSelectedNodeData({ dayOfMonth: e.target.value })}
+                                                        placeholder="1-31"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {selectedNode.data.recurrence !== 'hourly' && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Time of Day</label>
+                                                    <Input
+                                                        type="time"
+                                                        value={selectedNode.data.time as string || '09:00'}
+                                                        onChange={e => updateSelectedNodeData({ time: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {selectedNode.type === 'trigger' && selectedNode.data.label === 'Form Submitted' && (
+                                        <>
+                                            <div className="space-y-2 mt-4 pt-4 border-t border-border">
+                                                <label className="text-sm font-medium text-text-primary">Form Source</label>
+                                                <select
+                                                    className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                    value={selectedNode.data.formId as string || ''}
+                                                    onChange={e => updateSelectedNodeData({ formId: e.target.value })}
+                                                >
+                                                    <option value="">Select form...</option>
+                                                    <option value="contactUs">Contact Us (Website)</option>
+                                                    <option value="newsletter">Newsletter Signup</option>
+                                                    <option value="support">Support Request</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-text-primary">Trigger Event</label>
+                                                <select
+                                                    className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                    value={selectedNode.data.triggerEvent as string || 'any'}
+                                                    onChange={e => updateSelectedNodeData({ triggerEvent: e.target.value })}
+                                                >
+                                                    <option value="any">Any submission</option>
+                                                    <option value="specific">Contains specific label/value</option>
+                                                </select>
+                                            </div>
+                                            {selectedNode.data.triggerEvent === 'specific' && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Match Label/Value</label>
+                                                    <Input
+                                                        value={selectedNode.data.matchValue as string || ''}
+                                                        onChange={e => updateSelectedNodeData({ matchValue: e.target.value })}
+                                                        placeholder="e.g. Urgent"
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {selectedNode.type === 'trigger' && selectedNode.data.label === 'Record Created' && (
+                                        <div className="space-y-2 mt-4 pt-4 border-t border-border">
+                                            <label className="text-sm font-medium text-text-primary">Database / Table</label>
+                                            <select
+                                                className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                value={selectedNode.data.table as string || ''}
+                                                onChange={e => updateSelectedNodeData({ table: e.target.value })}
+                                            >
+                                                <option value="">Select table...</option>
+                                                <option value="users">Users</option>
+                                                <option value="orders">Orders</option>
+                                                <option value="invoices">Invoices</option>
+                                            </select>
+                                        </div>
+                                    )}
+
                                     {/* Action Node Fields */}
                                     {selectedNode.type === 'action' && selectedNode.data.label === 'Send Email' && (
                                         <>
@@ -771,6 +901,18 @@ function BuilderFlow() {
                                                     placeholder="Welcome!"
                                                 />
                                             </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-text-primary flex justify-between">
+                                                    Body / Context
+                                                    <button className="text-xs text-primary hover:underline" onClick={() => updateSelectedNodeData({ body: 'Hi {{customer.first_name}},\n\n' })}>Insert Variable</button>
+                                                </label>
+                                                <textarea
+                                                    className="flex min-h-[100px] w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 resize-y"
+                                                    value={selectedNode.data.body as string || ''}
+                                                    onChange={e => updateSelectedNodeData({ body: e.target.value })}
+                                                    placeholder="Enter your email message here..."
+                                                />
+                                            </div>
                                         </>
                                     )}
 
@@ -778,38 +920,91 @@ function BuilderFlow() {
                                     {selectedNode.type === 'condition' && (
                                         <>
                                             <div className="space-y-2 mt-4 pt-4 border-t border-border">
-                                                <label className="text-sm font-medium text-text-primary flex justify-between">
-                                                    Field
-                                                    <button className="text-xs text-primary hover:underline" onClick={() => updateSelectedNodeData({ field: '{{order.total}}' })}>Insert Variable</button>
-                                                </label>
-                                                <Input
-                                                    value={selectedNode.data.field as string || ''}
-                                                    onChange={e => updateSelectedNodeData({ field: e.target.value })}
-                                                    placeholder="e.g. Total Amount"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-text-primary">Condition</label>
+                                                <label className="text-sm font-medium text-text-primary">Condition Type</label>
                                                 <select
                                                     className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                                                    value={selectedNode.data.operator as string || ''}
-                                                    onChange={e => updateSelectedNodeData({ operator: e.target.value })}
+                                                    value={selectedNode.data.conditionType as string || 'data'}
+                                                    onChange={e => updateSelectedNodeData({ conditionType: e.target.value })}
                                                 >
-                                                    <option value="">Select operator...</option>
-                                                    <option value=">">Greater than</option>
-                                                    <option value="<">Less than</option>
-                                                    <option value="==">Equals</option>
-                                                    <option value="contains">Contains</option>
+                                                    <option value="data">Data Match (Mathematical/Text)</option>
+                                                    <option value="event">Event Occurred</option>
                                                 </select>
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-text-primary">Value</label>
-                                                <Input
-                                                    value={selectedNode.data.value as string || ''}
-                                                    onChange={e => updateSelectedNodeData({ value: e.target.value })}
-                                                    placeholder="500"
-                                                />
-                                            </div>
+
+                                            {(selectedNode.data.conditionType as string || 'data') === 'data' ? (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary flex justify-between">
+                                                            Field
+                                                            <button className="text-xs text-primary hover:underline" onClick={() => updateSelectedNodeData({ field: '{{order.total}}' })}>Insert Variable</button>
+                                                        </label>
+                                                        <Input
+                                                            value={selectedNode.data.field as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ field: e.target.value })}
+                                                            placeholder="e.g. Total Amount"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Rule</label>
+                                                        <select
+                                                            className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                            value={selectedNode.data.operator as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ operator: e.target.value })}
+                                                        >
+                                                            <option value="">Select operator...</option>
+                                                            <option value=">">Greater than</option>
+                                                            <option value="<">Less than</option>
+                                                            <option value="==">Equals</option>
+                                                            <option value="contains">Contains</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Value</label>
+                                                        <Input
+                                                            value={selectedNode.data.value as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ value: e.target.value })}
+                                                            placeholder="500"
+                                                        />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Event Type</label>
+                                                        <select
+                                                            className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                            value={selectedNode.data.eventType as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ eventType: e.target.value })}
+                                                        >
+                                                            <option value="">Select event...</option>
+                                                            <option value="form_submitted">Specific Form Submitted</option>
+                                                            <option value="column_changed">Database Column Changed</option>
+                                                            <option value="tag_added">Tag Added to Contact</option>
+                                                            <option value="status_updated">Status Updated</option>
+                                                        </select>
+                                                    </div>
+                                                    {selectedNode.data.eventType === 'form_submitted' && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium text-text-primary">Form Name/ID</label>
+                                                            <Input
+                                                                value={selectedNode.data.eventTarget as string || ''}
+                                                                onChange={e => updateSelectedNodeData({ eventTarget: e.target.value })}
+                                                                placeholder="e.g. Onboarding Form"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {selectedNode.data.eventType === 'column_changed' && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium text-text-primary">Column Name</label>
+                                                            <Input
+                                                                value={selectedNode.data.eventTarget as string || ''}
+                                                                onChange={e => updateSelectedNodeData({ eventTarget: e.target.value })}
+                                                                placeholder="e.g. status"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                         </>
                                     )}
 
