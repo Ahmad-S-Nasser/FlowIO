@@ -784,6 +784,18 @@ function BuilderFlow() {
                                                     placeholder="Welcome!"
                                                 />
                                             </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-text-primary flex justify-between">
+                                                    Body / Context
+                                                    <button className="text-xs text-primary hover:underline" onClick={() => updateSelectedNodeData({ body: 'Hi {{customer.first_name}},\n\n' })}>Insert Variable</button>
+                                                </label>
+                                                <textarea
+                                                    className="flex min-h-[100px] w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 resize-y"
+                                                    value={selectedNode.data.body as string || ''}
+                                                    onChange={e => updateSelectedNodeData({ body: e.target.value })}
+                                                    placeholder="Enter your email message here..."
+                                                />
+                                            </div>
                                         </>
                                     )}
 
