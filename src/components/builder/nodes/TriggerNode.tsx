@@ -1,9 +1,15 @@
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { Zap, AlertTriangle, X } from 'lucide-react';
+import { Zap, AlertTriangle, X, Play, Database, FileText, Calendar } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function TriggerNode({ id, data }: any) {
     const { deleteElements } = useReactFlow();
+
+    let Icon = Zap;
+    if (data.label === 'Manual Trigger') Icon = Play;
+    if (data.label === 'Schedule') Icon = Calendar;
+    if (data.label === 'Form Submitted') Icon = FileText;
+    if (data.label === 'Record Created') Icon = Database;
 
     return (
         <div className="relative group font-sans">
@@ -13,7 +19,7 @@ export function TriggerNode({ id, data }: any) {
 
                 <div className="p-4 flex-1 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                        <Zap className="w-6 h-6 text-status-success fill-status-success/20" />
+                        <Icon className="w-6 h-6 text-status-success" />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-status-success uppercase tracking-wider mb-1 flex items-center justify-between">

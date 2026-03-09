@@ -1,0 +1,7 @@
+src/pages/Settings.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Settings.tsx(6,38): error TS6133: 'Bell' is declared but its value is never read.
+src/pages/Settings.tsx(6,44): error TS6133: 'Shield' is declared but its value is never read.
+src/pages/Settings.tsx(6,52): error TS6133: 'LogOut' is declared but its value is never read.
+src/pages/Settings.tsx(6,60): error TS6133: 'Check' is declared but its value is never read.
+src/pages/Settings.tsx(134,36): error TS2322: Type '"secondary"' is not assignable to type '"success" | "warning" | "error" | "info" | "default" | undefined'.
+src/pages/Settings.tsx(178,60): error TS2322: Type '"secondary"' is not assignable to type '"success" | "warning" | "error" | "info" | "default" | undefined'.

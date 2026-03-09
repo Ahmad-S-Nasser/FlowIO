@@ -1,10 +1,16 @@
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { Mail, CheckSquare, AlertTriangle, X } from 'lucide-react';
+import { Mail, CheckSquare, AlertTriangle, X, UserCheck, Edit, Bell, Clock } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function ActionNode({ id, data }: any) {
     const { deleteElements } = useReactFlow();
-    const Icon = data.label === 'Create Task' ? CheckSquare : Mail;
+
+    let Icon = Mail;
+    if (data.label === 'Create Task') Icon = CheckSquare;
+    if (data.label === 'Request Approval') Icon = UserCheck;
+    if (data.label === 'Update Record') Icon = Edit;
+    if (data.label === 'Send Notification') Icon = Bell;
+    if (data.label === 'Delay') Icon = Clock;
 
     return (
         <div className="relative group font-sans">
