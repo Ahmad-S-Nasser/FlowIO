@@ -57,8 +57,8 @@ export function ActionNode({ id, data }: any) {
                 </button>
             </div>
 
-            <Handle type="target" position={Position.Top} className="w-3 h-3 bg-status-info border-2 border-white" />
-            <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-status-info border-2 border-white" />
+            <Handle type="target" position={Position.Top} className="handle-info" />
+            <Handle type="source" position={Position.Bottom} className="handle-info" />
 
             <AddBlockMenu sourceId={id} />
         </div>

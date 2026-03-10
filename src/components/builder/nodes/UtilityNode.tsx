@@ -12,7 +12,12 @@ export function UtilityNode({ id, data, isConnectable, selected }: any) {
     return (
         <div className={`relative group font-sans flex flex-col rounded-md transition-all duration-200 border-2 z-10 
                         ${selected ? 'border-primary shadow-node-selected' : 'border-transparent'}`}>
-            <Handle type="target" position={Position.Top} className="w-3 h-3 bg-white border-2 border-text-secondary rounded-full -top-1.5" isConnectable={isConnectable} />
+            <Handle
+                type="target"
+                position={Position.Top}
+                className={`-top-1.5 ${isRetry ? 'handle-info' : 'handle-error'}`}
+                isConnectable={isConnectable}
+            />
 
             <div className="w-[280px] bg-white rounded-md shadow-node flex items-stretch overflow-visible transition-all hover:shadow-md">
                 <div className={`w-2.5 shrink-0 rounded-l-md ${bgColorClass}`}></div>
@@ -50,7 +55,12 @@ export function UtilityNode({ id, data, isConnectable, selected }: any) {
                 </button>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-white border-2 border-text-secondary rounded-full -bottom-1.5 z-10" isConnectable={isConnectable} />
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                className={`-bottom-1.5 z-10 ${isRetry ? 'handle-info' : 'handle-error'}`}
+                isConnectable={isConnectable}
+            />
             <AddBlockMenu sourceId={id} />
         </div>
     );

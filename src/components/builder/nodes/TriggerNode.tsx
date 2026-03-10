@@ -56,7 +56,7 @@ export function TriggerNode({ id, data }: any) {
                 </button>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-status-success border-2 border-white" />
+            <Handle type="source" position={Position.Bottom} className="handle-success" />
             <AddBlockMenu sourceId={id} />
         </div>
     );

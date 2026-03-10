@@ -45,3 +45,38 @@
 .clip-hexagon {
   clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0 50%);
 }
+
+/* Premium Port Styles */
+.react-flow__handle {
+  width: 14px !important;
+  height: 14px !important;
+  border: 3px solid #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background-color: var(--color-primary); /* Default */
+}
+
+.react-flow__handle:hover {
+  width: 18px !important;
+  height: 18px !important;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(79, 142, 247, 0.15), 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.react-flow__handle-connecting {
+  background-color: var(--color-primary-hover) !important;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(79, 142, 247, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(79, 142, 247, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 142, 247, 0); }
+}
+
+/* Handle color overrides */
+.handle-success { background-color: var(--color-status-success) !important; }
+.handle-warning { background-color: var(--color-status-warning) !important; }
+.handle-error { background-color: var(--color-status-error) !important; }
+.handle-info { background-color: var(--color-status-info) !important; }
+.handle-secondary { background-color: var(--color-secondary) !important; }

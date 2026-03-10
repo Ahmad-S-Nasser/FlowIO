@@ -29,7 +29,8 @@ export function ToolActionNode({ id, data, isConnectable, selected }: ToolAction
                 type="target"
                 position={Position.Top}
                 isConnectable={isConnectable}
-                className="w-3 h-3 bg-white border-2 border-text-secondary rounded-full -top-1.5"
+                style={{ backgroundColor: tool.color }}
+                className="-top-1.5"
             />
 
             {/* Colored Left Border mapping to the Tool */}
@@ -91,7 +92,8 @@ export function ToolActionNode({ id, data, isConnectable, selected }: ToolAction
                 type="source"
                 position={Position.Bottom}
                 isConnectable={isConnectable}
-                className="w-3 h-3 bg-white border-2 border-text-secondary rounded-full -bottom-1.5 z-10"
+                style={{ backgroundColor: tool.color }}
+                className="-bottom-1.5 z-10"
             />
         </div>
     );

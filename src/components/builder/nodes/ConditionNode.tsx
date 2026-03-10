@@ -55,21 +55,21 @@ export function ConditionNode({ id, data }: any) {
                 </div>
             </div>
 
-            <Handle type="target" position={Position.Top} className="w-3 h-3 bg-status-warning border-2 border-white" />
+            <Handle type="target" position={Position.Top} className="handle-warning" />
 
             {/* True / False labels & Handles */}
             <div className="absolute -bottom-8 left-0 right-0 flex justify-between px-10">
                 {/* Yes Branch */}
                 <div className="relative flex flex-col items-center">
                     <span className="text-xs font-bold text-status-success bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max">Yes</span>
-                    <Handle type="source" position={Position.Bottom} id="yes" className="!relative !transform-none !left-auto !bottom-auto w-3 h-3 bg-status-success border-2 border-white translate-y-2 z-0" />
+                    <Handle type="source" position={Position.Bottom} id="yes" className="!relative !transform-none !left-auto !bottom-auto handle-success translate-y-2 z-0" />
                     <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch="yes" /></div>
                 </div>
 
                 {/* No Branch */}
                 <div className="relative flex flex-col items-center">
                     <span className="text-xs font-bold text-text-secondary bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max">No</span>
-                    <Handle type="source" position={Position.Bottom} id="no" className="!relative !transform-none !left-auto !bottom-auto w-3 h-3 bg-status-warning border-2 border-white translate-y-2 z-0" />
+                    <Handle type="source" position={Position.Bottom} id="no" className="!relative !transform-none !left-auto !bottom-auto handle-warning translate-y-2 z-0" />
                     <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch="no" /></div>
                 </div>
             </div>

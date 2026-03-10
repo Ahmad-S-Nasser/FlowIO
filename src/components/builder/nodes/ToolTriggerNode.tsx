@@ -73,7 +73,7 @@ export function ToolTriggerNode({ id, data, isConnectable, selected }: ToolTrigg
                 </button>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="w-3 h-3 border-2 border-white" style={{ backgroundColor: tool.color }} isConnectable={isConnectable} />
+            <Handle type="source" position={Position.Bottom} className="border-white" style={{ backgroundColor: tool.color }} isConnectable={isConnectable} />
             <AddBlockMenu sourceId={id} />
         </div>
     );
