@@ -7,6 +7,7 @@ import { Logs } from './pages/Logs';
 import { Settings } from './pages/Settings';
 import Integrations from './pages/Integrations';
 import { Builder } from './pages/Builder';
+import { Activities } from './pages/Activities';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/logs" element={<Logs />} />
           <Route path="/integrations" element={<Integrations />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/activities" element={<Activities />} />
         </Route>
         {/* Builder sits outside AppLayout to have full screen canvas */}
         <Route path="/builder/:id" element={<Builder />} />

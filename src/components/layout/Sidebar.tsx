@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, GitMerge, Settings, Zap, LayoutGrid, Plug, Webhook } from 'lucide-react';
+import { NavLink, Link } from 'react-router-dom';
+import { LayoutDashboard, GitMerge, Settings, Zap, LayoutGrid, Plug, Webhook, Activity } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
     { name: 'Templates', path: '/templates', icon: LayoutGrid },
     { name: 'Integrations', path: '/integrations', icon: Plug },
     { name: 'Logs', path: '/logs', icon: Webhook },
+    { name: 'Activities', path: '/activities', icon: Activity },
     { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
@@ -42,16 +43,16 @@ export function Sidebar() {
                 })}
             </nav>
 
-            <div className="p-4 border-t border-border">
-                <div className="flex items-center gap-3 px-3 py-2">
-                    <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-sm">
-                        US
+            <div className="p-4 border-t border-border mt-auto">
+                <Link to="/settings" className="flex items-center gap-3 px-3 py-2 rounded-btn hover:bg-background-canvas transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-sm shrink-0">
+                        AN
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-text-primary">User</span>
-                        <span className="text-xs text-text-secondary">Free Plan</span>
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium text-text-primary truncate">Ahmad Nasser</span>
+                        <span className="text-xs text-text-secondary truncate">Free Plan</span>
                     </div>
-                </div>
+                </Link>
             </div>
         </div>
     );

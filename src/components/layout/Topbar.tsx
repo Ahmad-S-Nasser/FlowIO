@@ -119,7 +119,13 @@ export function Topbar() {
                                 )}
                             </div>
                             <div className="p-3 border-t border-border text-center bg-background-canvas/50">
-                                <button className="text-sm text-primary hover:text-primary-hover font-medium transition-colors w-full">
+                                <button
+                                    className="text-sm text-primary hover:text-primary-hover font-medium transition-colors w-full"
+                                    onClick={() => {
+                                        setShowNotifications(false);
+                                        navigate('/activities');
+                                    }}
+                                >
                                     View all activity
                                 </button>
                             </div>
