@@ -1,5 +1,5 @@
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { Zap, AlertTriangle, X, Play, Database, FileText, Calendar } from 'lucide-react';
+import { Zap, AlertTriangle, X, Play, Database, FileText, Calendar, Trash2, Edit } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function TriggerNode({ id, data }: any) {
@@ -10,6 +10,8 @@ export function TriggerNode({ id, data }: any) {
     if (data.label === 'Schedule') Icon = Calendar;
     if (data.label === 'Form Submitted') Icon = FileText;
     if (data.label === 'Record Created') Icon = Database;
+    if (data.label === 'Record Deleted') Icon = Trash2;
+    if (data.label === 'Field Updated') Icon = Edit;
 
     return (
         <div className="relative group font-sans">

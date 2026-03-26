@@ -1,5 +1,5 @@
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { Mail, CheckSquare, AlertTriangle, X, UserCheck, Edit, Bell, Clock } from 'lucide-react';
+import { Mail, CheckSquare, AlertTriangle, X, UserCheck, Edit, Bell, Clock, Wand2, Code, Search, Layers } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function ActionNode({ id, data }: any) {
@@ -11,6 +11,10 @@ export function ActionNode({ id, data }: any) {
     if (data.label === 'Update Record') Icon = Edit;
     if (data.label === 'Send Notification') Icon = Bell;
     if (data.label === 'Delay') Icon = Clock;
+    if (data.label === 'Transform Data') Icon = Wand2;
+    if (data.label === 'Set Variable') Icon = Code;
+    if (data.label === 'Query Rows') Icon = Search;
+    if (data.label === 'Call Workflow') Icon = Layers;
 
     return (
         <div className="relative group font-sans">

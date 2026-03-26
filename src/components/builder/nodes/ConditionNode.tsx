@@ -5,6 +5,11 @@ import { AddBlockMenu } from '../AddBlockMenu';
 export function ConditionNode({ id, data }: any) {
     const { deleteElements } = useReactFlow();
 
+    const branches = data.branches || [
+        { id: 'yes', label: 'Yes', color: 'success' },
+        { id: 'no', label: 'No', color: 'warning' }
+    ];
+
     return (
         <div className="relative group font-sans">
             <div className="w-[320px] drop-shadow-sm hover:drop-shadow-md transition-all">
@@ -57,21 +62,21 @@ export function ConditionNode({ id, data }: any) {
 
             <Handle type="target" position={Position.Top} className="handle-warning" />
 
-            {/* True / False labels & Handles */}
-            <div className="absolute -bottom-8 left-0 right-0 flex justify-between px-10">
-                {/* Yes Branch */}
-                <div className="relative flex flex-col items-center">
-                    <span className="text-xs font-bold text-status-success bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max">Yes</span>
-                    <Handle type="source" position={Position.Bottom} id="yes" className="!relative !transform-none !left-auto !bottom-auto handle-success translate-y-2 z-0" />
-                    <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch="yes" /></div>
-                </div>
-
-                {/* No Branch */}
-                <div className="relative flex flex-col items-center">
-                    <span className="text-xs font-bold text-text-secondary bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max">No</span>
-                    <Handle type="source" position={Position.Bottom} id="no" className="!relative !transform-none !left-auto !bottom-auto handle-warning translate-y-2 z-0" />
-                    <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch="no" /></div>
-                </div>
+            {/* Dynamic branches */}
+            <div className="absolute -bottom-8 left-0 right-0 flex justify-around px-4">
+                {branches.map((branch: any) => {
+                    const colorClass = branch.color === 'success' ? 'text-status-success handle-success' : 'text-text-secondary handle-warning';
+                    
+                    return (
+                        <div key={branch.id} className="relative flex flex-col items-center">
+                            <span className={`text-xs font-bold ${colorClass.split(' ')[0]} bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max`}>
+                                {branch.label}
+                            </span>
+                            <Handle type="source" position={Position.Bottom} id={branch.id} className={`!relative !transform-none !left-auto !bottom-auto ${colorClass.split(' ')[1]} translate-y-2 z-0`} />
+                            <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch={branch.id} /></div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

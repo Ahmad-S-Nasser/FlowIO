@@ -102,6 +102,42 @@ export const generateFlowFromPrompt = async (prompt: string): Promise<AIGenerate
                 animated: true
             });
         }
+    } else if (lowerPrompt.includes('parallel') || lowerPrompt.includes('simultaneous') || lowerPrompt.includes('at the same time')) {
+        // Parallel Actions
+        const pNodeId = getId();
+        const pNode: Node = {
+            id: pNodeId,
+            type: 'parallel',
+            position: { x: 0, y: 0 },
+            data: { label: 'Parallel Processing', description: 'Run multiple tasks at once', isConfigured: true, branches: [{ id: 'b1', label: 'Email' }, { id: 'b2', label: 'Database' }, { id: 'b3', label: 'Webhook' }] }
+        };
+        nodes.push(pNode);
+        edges.push({ id: `e-${lastNodeId}-${pNodeId}`, source: lastNodeId, target: pNodeId, type: 'smoothstep', animated: true });
+
+        // Branch 1: Email
+        const a1: Node = {
+            id: getId(), type: 'action', position: { x: 0, y: 0 },
+            data: { label: 'Send Email', description: 'Customer receipt', isConfigured: true, configSummary: { To: '{{trigger.email}}' } }
+        };
+        nodes.push(a1);
+        edges.push({ id: `e-${pNodeId}-b1-${a1.id}`, source: pNodeId, target: a1.id, sourceHandle: 'b1', type: 'smoothstep', animated: true });
+
+        // Branch 2: Database
+        const a2: Node = {
+            id: getId(), type: 'action', position: { x: 0, y: 0 },
+            data: { label: 'Update Record', description: 'Mark as done', isConfigured: true, configSummary: { Table: 'Orders' } }
+        };
+        nodes.push(a2);
+        edges.push({ id: `e-${pNodeId}-b2-${a2.id}`, source: pNodeId, target: a2.id, sourceHandle: 'b2', type: 'smoothstep', animated: true });
+
+        // Branch 3: Webhook
+        const a3: Node = {
+            id: getId(), type: 'tool', position: { x: 0, y: 0 },
+            data: { actionId: 'slack-send-message', description: 'Notify Team', isConfigured: true, configSummary: { Channel: '#general' } }
+        };
+        nodes.push(a3);
+        edges.push({ id: `e-${pNodeId}-b3-${a3.id}`, source: pNodeId, target: a3.id, sourceHandle: 'b3', type: 'smoothstep', animated: true });
+
     } else {
         // Sequential Actions without condition
         if (lowerPrompt.includes('email')) {

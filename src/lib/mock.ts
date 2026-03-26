@@ -17,6 +17,7 @@ export const mockTemplates = [
     { id: 't2', name: 'Employee Onboarding', category: 'HR', description: 'Send welcome emails, assign training, and setup accounts for new hires.' },
     { id: 't3', name: 'Invoice Reminder', category: 'Finance', description: 'Send automated reminders for overdue invoices.' },
     { id: 't4', name: 'Support Escalation', category: 'Support', description: 'Escalate urgent tickets to the on-call engineer immediately.' },
+    { id: 't5', name: 'Advanced Parallel Workflow', category: 'Automation', description: 'Execute multiple branches simultaneously (Email, Database Update, and Webhook).' },
 ];
 
 import type { Node, Edge } from '@xyflow/react';
@@ -44,6 +45,21 @@ export const mockTemplateFlows: Record<string, { nodes: Node[], edges: Edge[] }>
         edges: [
             { id: 'e-t2-1-t2-2', source: 't2-1', target: 't2-2', type: 'smoothstep', animated: true },
             { id: 'e-t2-2-t2-3', source: 't2-2', target: 't2-3', type: 'smoothstep', animated: true }
+        ]
+    },
+    't5': {
+        nodes: [
+            { id: 't5-1', type: 'trigger', position: { x: 0, y: 0 }, data: { label: 'Web Checkout', description: 'Customer completes purchase', isConfigured: true, configSummary: { Event: 'checkout_success' } } },
+            { id: 't5-p', type: 'parallel', position: { x: 0, y: 0 }, data: { label: 'Parallel Processing', description: 'Execute these steps at the same time', isConfigured: true, branches: [{ id: 'b1', label: 'Email' }, { id: 'b2', label: 'Database' }, { id: 'b3', label: 'Webhook' }] } },
+            { id: 't5-a1', type: 'action', position: { x: 0, y: 0 }, data: { label: 'Send Email', description: 'Send receipt', isConfigured: true, configSummary: { To: '{{trigger.customer.email}}' } } },
+            { id: 't5-a2', type: 'action', position: { x: 0, y: 0 }, data: { label: 'Update Record', description: 'Mark inventory sold', isConfigured: true, configSummary: { Table: 'Inventory' } } },
+            { id: 't5-a3', type: 'tool', position: { x: 0, y: 0 }, data: { actionId: 'slack-send-message', description: 'Notify fulfillment webhook', isConfigured: true, configSummary: { Channel: '#fulfillment', Message: 'New order ready to ship!' } } }
+        ],
+        edges: [
+            { id: 'e-t5-1-p', source: 't5-1', target: 't5-p', type: 'smoothstep', animated: true },
+            { id: 'e-t5-p-a1', source: 't5-p', target: 't5-a1', sourceHandle: 'b1', type: 'smoothstep', animated: true },
+            { id: 'e-t5-p-a2', source: 't5-p', target: 't5-a2', sourceHandle: 'b2', type: 'smoothstep', animated: true },
+            { id: 'e-t5-p-a3', source: 't5-p', target: 't5-a3', sourceHandle: 'b3', type: 'smoothstep', animated: true }
         ]
     }
 };
