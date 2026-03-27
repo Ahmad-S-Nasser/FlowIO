@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dagre from 'dagre';
-import { Trash2, Download, Upload, ArrowLeft, Play, Plus, X, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw, UserCheck, Edit, Bell, Clock, Repeat, Network, Wand2, Code, ShieldAlert, Search, Layers } from 'lucide-react';
+import { Trash2, Download, Upload, ArrowLeft, Play, Plus, X, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw, UserCheck, Edit, Bell, Clock, Repeat, Network, Wand2, Code, ShieldAlert, Search, Layers, GitBranch } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
@@ -29,6 +29,7 @@ import { UtilityNode } from '../components/builder/nodes/UtilityNode';
 import { LoopNode } from '../components/builder/nodes/LoopNode';
 import { ParallelNode } from '../components/builder/nodes/ParallelNode';
 import { TryCatchNode } from '../components/builder/nodes/TryCatchNode';
+import { ErrorBranchNode } from '../components/builder/nodes/ErrorBranchNode';
 import { AIPromptModal } from '../components/builder/AIPromptModal';
 import { IN_MEMORY_INTEGRATIONS, getToolActionById, getToolTriggerById } from '../lib/integrations';
 import { mockTemplateFlows, mockWorkflows, mockTemplates } from '../lib/mock';
@@ -44,6 +45,7 @@ const nodeTypes = {
     loop: LoopNode,
     parallel: ParallelNode,
     trycatch: TryCatchNode,
+    error_branch: ErrorBranchNode,
 };
 
 const initialNodes: Node[] = [];
@@ -261,15 +263,37 @@ function BuilderFlow() {
 
             if (node.type === 'trigger') {
                 if (newData.label === 'Schedule') {
-                    isConfigured = !!newData.frequency;
-                    if (newData.frequency) configSummary['Every'] = newData.frequency;
+                    if (newData.frequency === 'hourly') {
+                        isConfigured = !!newData.minute;
+                        if (newData.minute) configSummary['Minute'] = `:${newData.minute}`;
+                    } else if (newData.frequency === 'daily') {
+                        isConfigured = !!newData.time;
+                        if (newData.time) configSummary['At'] = newData.time;
+                    } else if (newData.frequency === 'weekly') {
+                        isConfigured = !!(newData.time && newData.daysOfWeek && newData.daysOfWeek.length > 0);
+                        if (newData.daysOfWeek) configSummary['Days'] = newData.daysOfWeek.join(',');
+                    } else if (newData.frequency === 'monthly') {
+                        isConfigured = !!(newData.time && newData.daysOfMonth && newData.daysOfMonth.length > 0);
+                        if (newData.daysOfMonth) configSummary['Days'] = newData.daysOfMonth.join(',');
+                    } else if (newData.frequency === 'cron') {
+                        isConfigured = !!newData.cronExpression;
+                        if (newData.cronExpression) configSummary['Cron'] = newData.cronExpression;
+                    } else {
+                        isConfigured = false;
+                    }
                 } else if (newData.label === 'Record Created' || newData.label === 'Record Deleted') {
                     isConfigured = !!newData.table;
                     if (newData.table) configSummary['Table'] = newData.table;
+                    if (newData.filterField && newData.filterValue) configSummary['Filter'] = `${newData.filterField} ${(newData.filterOperator || '=')} ${newData.filterValue}`;
+                } else if (newData.label === 'Form Submitted') {
+                    isConfigured = !!newData.formId;
+                    if (newData.formId) configSummary['Form'] = newData.formId;
+                    if (newData.conditionField && newData.conditionValue) configSummary['Condition'] = `${newData.conditionField} ${(newData.conditionOperator || '=')} ${newData.conditionValue}`;
                 } else if (newData.label === 'Field Updated') {
                     isConfigured = !!(newData.table && newData.column);
                     if (newData.table) configSummary['Table'] = newData.table;
                     if (newData.column) configSummary['Field'] = newData.column;
+                    if (newData.conditionField && newData.conditionValue) configSummary['Condition'] = `${newData.conditionField} ${(newData.conditionOperator || '=')} ${newData.conditionValue}`;
                 } else {
                     isConfigured = true;
                 }
@@ -294,10 +318,11 @@ function BuilderFlow() {
                 isConfigured = !!newData.workflowId;
                 if (newData.workflowId) configSummary['Flow'] = mockWorkflows.find(w => w.id === newData.workflowId)?.name || mockTemplates.find(w => w.id === newData.workflowId)?.name || 'Selected';
             } else if (node.type === 'condition') {
-                isConfigured = !!(newData.field && newData.operator && newData.value);
+                const isValReq = newData.operator !== 'is_empty' && newData.operator !== 'not_empty';
+                isConfigured = !!(newData.field && newData.operator && (!isValReq || newData.value));
                 if (newData.field) configSummary['If'] = newData.field;
                 if (newData.operator) configSummary['Is'] = newData.operator;
-                if (newData.value) configSummary['Value'] = newData.value;
+                if (newData.value && isValReq) configSummary['Value'] = newData.value;
             } else if (node.type === 'loop') {
                 isConfigured = !!newData.listVariable;
                 if (newData.listVariable) configSummary['List'] = newData.listVariable;
@@ -306,13 +331,19 @@ function BuilderFlow() {
                 if (newData.branches) configSummary['Branches'] = newData.branches.length.toString();
             } else if (node.type === 'trycatch') {
                 isConfigured = true;
+                if (newData.errorVariable) configSummary['Var'] = newData.errorVariable;
+            } else if (node.type === 'error_branch') {
+                if (newData.detectionMode === 'custom') {
+                    isConfigured = !!(newData.field && newData.operator && newData.value);
+                    if (newData.field) configSummary['If'] = newData.field;
+                } else {
+                    isConfigured = true;
+                    configSummary['Mode'] = 'Automatic';
+                }
             } else if (node.type === 'utility') {
                 if (newData.label === 'Retry Step') {
                     isConfigured = !!newData.attempts;
                     if (newData.attempts) configSummary['Retries'] = newData.attempts;
-                } else if (newData.label === 'On Error') {
-                    isConfigured = !!newData.action;
-                    if (newData.action) configSummary['Action'] = newData.action;
                 }
             } else if (node.type === 'tool' || node.type === 'tool_trigger') {
                 const schemaDef = node.type === 'tool'
@@ -709,13 +740,14 @@ function BuilderFlow() {
                                     <span className="text-sm font-medium text-text-primary pr-2">Try / Catch</span>
                                 </div>
                                 <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-error cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'utility', 'On Error')} draggable
+                                    className="p-2 bg-white border border-border rounded-md cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 relative overflow-hidden drop-shadow-sm"
+                                    onDragStart={(e) => onDragStart(e, 'error_branch', 'Error Branch')} draggable
                                 >
-                                    <div className="w-8 h-8 rounded-md bg-status-error/10 flex items-center justify-center shrink-0">
-                                        <AlertTriangle className="w-4 h-4 text-status-error" />
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning" />
+                                    <div className="w-8 h-8 rounded-md bg-status-warning/10 flex items-center justify-center shrink-0 z-10 border border-status-warning/20">
+                                        <GitBranch className="w-4 h-4 text-status-warning" />
                                     </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Error Branch</span>
+                                    <span className="text-sm font-medium text-text-primary pr-2 z-10">Error Branch</span>
                                 </div>
                                 <div
                                     className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
@@ -986,6 +1018,16 @@ function BuilderFlow() {
                                                             <option value="specific_roles">Specific Roles</option>
                                                         </select>
                                                     </div>
+                                                    <div className="flex items-center justify-between mt-4">
+                                                        <div className="space-y-0.5">
+                                                            <label className="text-sm font-medium text-text-primary">Confirmation Required</label>
+                                                            <p className="text-xs text-text-secondary">Show a dialog before execution.</p>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input type="checkbox" className="sr-only peer" checked={!!selectedNode.data.confirmationRequired} onChange={e => updateSelectedNodeData({ confirmationRequired: e.target.checked })} />
+                                                            <div className="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                                        </label>
+                                                    </div>
 
                                                     <div className="space-y-3 pt-4 border-t border-border">
                                                         <div className="flex items-center justify-between">
@@ -1100,43 +1142,92 @@ function BuilderFlow() {
                                                         <option value="support">Support Request</option>
                                                     </select>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-text-primary">Trigger Event</label>
-                                                    <select
-                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                                                        value={selectedNode.data.triggerEvent as string || 'any'}
-                                                        onChange={e => updateSelectedNodeData({ triggerEvent: e.target.value })}
-                                                    >
-                                                        <option value="any">Any submission</option>
-                                                        <option value="specific">Contains specific label/value</option>
-                                                    </select>
-                                                </div>
-                                                {selectedNode.data.triggerEvent === 'specific' && (
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-medium text-text-primary">Match Label/Value</label>
-                                                        <Input
-                                                            value={selectedNode.data.matchValue as string || ''}
-                                                            onChange={e => updateSelectedNodeData({ matchValue: e.target.value })}
-                                                            placeholder="e.g. Urgent"
-                                                        />
+                                                <div className="space-y-2 mt-4 pt-4 border-t border-border">
+                                                    <label className="text-sm font-medium text-text-primary flex justify-between">Trigger When (Condition) <span className="text-text-tertiary">Optional</span></label>
+                                                    <div className="flex gap-2">
+                                                        <Input placeholder="Field (e.g. Email)" value={selectedNode.data.conditionField as string || ''} onChange={e => updateSelectedNodeData({ conditionField: e.target.value })} className="flex-1" />
+                                                        <select className="flex h-10 w-24 rounded-btn border border-border bg-transparent px-2 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20" value={selectedNode.data.conditionOperator as string || '='} onChange={e => updateSelectedNodeData({ conditionOperator: e.target.value })}>
+                                                            <option value="=">Equals</option><option value="!=">Not Eq</option><option value=">">Greater</option><option value="<">Less</option>
+                                                        </select>
+                                                        <Input placeholder="Value" value={selectedNode.data.conditionValue as string || ''} onChange={e => updateSelectedNodeData({ conditionValue: e.target.value })} className="flex-1" />
                                                     </div>
-                                                )}
+                                                </div>
+                                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                                                    <div className="space-y-0.5">
+                                                        <label className="text-sm font-medium text-text-primary">Include File Uploads</label>
+                                                        <p className="text-xs text-text-secondary">Download files as part of payload.</p>
+                                                    </div>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" className="sr-only peer" checked={selectedNode.data.includeFiles !== false} onChange={e => updateSelectedNodeData({ includeFiles: e.target.checked })} />
+                                                        <div className="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                                    </label>
+                                                </div>
                                             </>
                                         )}
 
-                                        {selectedNode.type === 'trigger' && ['Record Created', 'Record Deleted'].includes(selectedNode.data.label as string) && (
-                                            <div className="space-y-2 mt-4 pt-4 border-t border-border">
-                                                <label className="text-sm font-medium text-text-primary">Database / Table</label>
-                                                <select
-                                                    className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                                                    value={selectedNode.data.table as string || ''}
-                                                    onChange={e => updateSelectedNodeData({ table: e.target.value })}
-                                                >
-                                                    <option value="">Select table...</option>
-                                                    <option value="users">Users</option>
-                                                    <option value="orders">Orders</option>
-                                                    <option value="invoices">Invoices</option>
-                                                </select>
+                                        {selectedNode.type === 'trigger' && selectedNode.data.label === 'Record Created' && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-border">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Database / Table</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={selectedNode.data.table as string || ''}
+                                                        onChange={e => updateSelectedNodeData({ table: e.target.value })}
+                                                    >
+                                                        <option value="">Select table...</option>
+                                                        <option value="users">Users</option>
+                                                        <option value="orders">Orders</option>
+                                                        <option value="invoices">Invoices</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary flex justify-between">Filter Conditions <span className="text-text-tertiary">Optional</span></label>
+                                                    <div className="flex gap-2">
+                                                        <Input placeholder="Field (e.g. Status)" value={selectedNode.data.filterField as string || ''} onChange={e => updateSelectedNodeData({ filterField: e.target.value })} className="flex-1" />
+                                                        <select className="flex h-10 w-24 rounded-btn border border-border bg-transparent px-2 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20" value={selectedNode.data.filterOperator as string || '='} onChange={e => updateSelectedNodeData({ filterOperator: e.target.value })}>
+                                                            <option value="=">Equals</option><option value="!=">Not Eq</option><option value=">">Greater</option><option value="<">Less</option>
+                                                        </select>
+                                                        <Input placeholder="Value (e.g. New)" value={selectedNode.data.filterValue as string || ''} onChange={e => updateSelectedNodeData({ filterValue: e.target.value })} className="flex-1" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="space-y-0.5">
+                                                        <label className="text-sm font-medium text-text-primary">Trigger Only Once</label>
+                                                        <p className="text-xs text-text-secondary">Prevents duplicates for the same record.</p>
+                                                    </div>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" className="sr-only peer" checked={!!selectedNode.data.triggerOnce} onChange={e => updateSelectedNodeData({ triggerOnce: e.target.checked })} />
+                                                        <div className="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedNode.type === 'trigger' && selectedNode.data.label === 'Record Deleted' && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-border">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Database / Table</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={selectedNode.data.table as string || ''}
+                                                        onChange={e => updateSelectedNodeData({ table: e.target.value })}
+                                                    >
+                                                        <option value="">Select table...</option>
+                                                        <option value="users">Users</option>
+                                                        <option value="orders">Orders</option>
+                                                        <option value="invoices">Invoices</option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="space-y-0.5">
+                                                        <label className="text-sm font-medium text-text-primary">Before-Value Snapshot</label>
+                                                        <p className="text-xs text-text-secondary">Stores record values before deleted.</p>
+                                                    </div>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" className="sr-only peer" checked={!!selectedNode.data.snapshot} onChange={e => updateSelectedNodeData({ snapshot: e.target.checked })} />
+                                                        <div className="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                                    </label>
+                                                </div>
                                             </div>
                                         )}
 
@@ -1164,6 +1255,26 @@ function BuilderFlow() {
                                                             placeholder="e.g. status"
                                                         />
                                                     </div>
+                                                    <div className="space-y-2 pt-2 border-t border-border">
+                                                        <label className="text-sm font-medium text-text-primary flex justify-between">Condition <span className="text-text-tertiary">Optional</span></label>
+                                                        <div className="flex gap-2">
+                                                            <Input placeholder="Field" value={selectedNode.data.conditionField as string || ''} onChange={e => updateSelectedNodeData({ conditionField: e.target.value })} className="flex-1" />
+                                                            <select className="flex h-10 w-24 rounded-btn border border-border bg-transparent px-2 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20" value={selectedNode.data.conditionOperator as string || '='} onChange={e => updateSelectedNodeData({ conditionOperator: e.target.value })}>
+                                                                <option value="=">Equals</option><option value="!=">Not Eq</option><option value=">">Greater</option><option value="<">Less</option>
+                                                            </select>
+                                                            <Input placeholder="Value" value={selectedNode.data.conditionValue as string || ''} onChange={e => updateSelectedNodeData({ conditionValue: e.target.value })} className="flex-1" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="space-y-0.5">
+                                                            <label className="text-sm font-medium text-text-primary">Compare Old vs New</label>
+                                                            <p className="text-xs text-text-secondary">Provides old_value and new_value.</p>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input type="checkbox" className="sr-only peer" checked={selectedNode.data.compareOldNew !== false} onChange={e => updateSelectedNodeData({ compareOldNew: e.target.checked })} />
+                                                            <div className="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </>
                                         )}
@@ -1184,22 +1295,63 @@ function BuilderFlow() {
                                                         <option value="cron">Advanced (Cron)</option>
                                                     </select>
                                                 </div>
-                                                {(selectedNode.data.frequency === 'cron') ? (
+                                                {selectedNode.data.frequency === 'hourly' && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Minute (0-59)</label>
+                                                        <Input
+                                                            type="number" min="0" max="59"
+                                                            value={selectedNode.data.minute as string || '0'}
+                                                            onChange={e => updateSelectedNodeData({ minute: e.target.value })}
+                                                            placeholder="e.g. 15"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {['daily', 'weekly', 'monthly'].includes(selectedNode.data.frequency as string || 'daily') && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Time of day</label>
+                                                        <Input
+                                                            type="time"
+                                                            value={selectedNode.data.time as string || '09:00'}
+                                                            onChange={e => updateSelectedNodeData({ time: e.target.value })}
+                                                        />
+                                                    </div>
+                                                )}
+                                                {selectedNode.data.frequency === 'weekly' && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Days of week</label>
+                                                        <div className="flex flex-wrap gap-2 pt-1">
+                                                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                                                <label key={day} className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input type="checkbox" checked={((selectedNode.data.daysOfWeek as string[]) || []).includes(day)} onChange={e => {
+                                                                        const current = (selectedNode.data.daysOfWeek as string[]) || [];
+                                                                        updateSelectedNodeData({ daysOfWeek: e.target.checked ? [...current, day] : current.filter(d => d !== day) });
+                                                                    }} className="rounded border-border text-primary focus:ring-primary/20" />
+                                                                    <span className="text-xs text-text-secondary">{day}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {selectedNode.data.frequency === 'monthly' && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Days of month (1-31)</label>
+                                                        <Input
+                                                            value={((selectedNode.data.daysOfMonth as string[]) || []).join(', ')}
+                                                            onChange={e => {
+                                                                const vals = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                                                updateSelectedNodeData({ daysOfMonth: vals });
+                                                            }}
+                                                            placeholder="e.g. 1, 15, 30"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {selectedNode.data.frequency === 'cron' && (
                                                     <div className="space-y-2">
                                                         <label className="text-sm font-medium text-text-primary">Cron Expression</label>
                                                         <Input
                                                             value={selectedNode.data.cronExpression as string || ''}
                                                             onChange={e => updateSelectedNodeData({ cronExpression: e.target.value })}
                                                             placeholder="e.g. 0 0 * * *"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-medium text-text-primary">Time</label>
-                                                        <Input
-                                                            type="time"
-                                                            value={selectedNode.data.time as string || '09:00'}
-                                                            onChange={e => updateSelectedNodeData({ time: e.target.value })}
                                                         />
                                                     </div>
                                                 )}
@@ -1538,7 +1690,7 @@ function BuilderFlow() {
                                         {selectedNode.type === 'condition' && (
                                             <div className="space-y-4 mt-4 pt-4 border-t border-border">
                                                 <div className="flex justify-between items-center">
-                                                    <label className="text-sm font-medium text-text-primary">Branches</label>
+                                                    <label className="text-sm font-medium text-text-primary">Condition Group</label>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -1589,7 +1741,7 @@ function BuilderFlow() {
                                                         {index < arr.length - 1 ? (
                                                             <div className="space-y-2">
                                                                 <Input
-                                                                    placeholder="Field e.g. {{order.total}}"
+                                                                    placeholder="Field e.g. record.status"
                                                                     value={branch.field || ''}
                                                                     onChange={e => {
                                                                         const newBranches = [...arr];
@@ -1602,7 +1754,7 @@ function BuilderFlow() {
                                                                     className="h-8 text-xs bg-white"
                                                                 />
                                                                 <select
-                                                                    className="flex h-8 w-full rounded-btn border border-border bg-white px-2 py-1 text-xs"
+                                                                    className="flex h-8 w-full rounded-btn border border-border bg-white px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
                                                                     value={branch.operator || ''}
                                                                     onChange={e => {
                                                                         const newBranches = [...arr];
@@ -1614,27 +1766,37 @@ function BuilderFlow() {
                                                                     }}
                                                                 >
                                                                     <option value="">Select operator...</option>
-                                                                    <option value=">">Greater than</option>
-                                                                    <option value="<">Less than</option>
-                                                                    <option value="==">Equals</option>
-                                                                    <option value="contains">Contains</option>
+                                                                    <option value="equals">equals</option>
+                                                                    <option value="not_equals">not equals</option>
+                                                                    <option value="contains">contains</option>
+                                                                    <option value="not_contains">does not contain</option>
+                                                                    <option value="is_empty">is empty</option>
+                                                                    <option value="not_empty">is not empty</option>
+                                                                    <option value="greater_than">greater than</option>
+                                                                    <option value="less_than">less than</option>
+                                                                    <option value="greater_equal">greater or equal</option>
+                                                                    <option value="less_equal">less or equal</option>
+                                                                    <option value="starts_with">starts with</option>
+                                                                    <option value="ends_with">ends with</option>
                                                                 </select>
-                                                                <Input
-                                                                    placeholder="Value"
-                                                                    value={branch.value || ''}
-                                                                    onChange={e => {
-                                                                        const newBranches = [...arr];
-                                                                        newBranches[index] = { ...branch, value: e.target.value };
-                                                                        updateSelectedNodeData({ 
-                                                                            branches: newBranches, 
-                                                                            value: index === 0 ? e.target.value : selectedNode.data.value 
-                                                                        });
-                                                                    }}
-                                                                    className="h-8 text-xs bg-white"
-                                                                />
+                                                                {branch.operator !== 'is_empty' && branch.operator !== 'not_empty' && (
+                                                                    <Input
+                                                                        placeholder="Value"
+                                                                        value={branch.value || ''}
+                                                                        onChange={e => {
+                                                                            const newBranches = [...arr];
+                                                                            newBranches[index] = { ...branch, value: e.target.value };
+                                                                            updateSelectedNodeData({ 
+                                                                                branches: newBranches, 
+                                                                                value: index === 0 ? e.target.value : selectedNode.data.value 
+                                                                            });
+                                                                        }}
+                                                                        className="h-8 text-xs bg-white"
+                                                                    />
+                                                                )}
                                                             </div>
                                                         ) : (
-                                                            <div className="text-xs text-text-secondary italic">Fallback branch if no other rules match.</div>
+                                                            <div className="text-xs text-text-secondary italic">Fallback branch (FALSE) if no other conditions match.</div>
                                                         )}
                                                     </div>
                                                 ))}
@@ -1645,12 +1807,45 @@ function BuilderFlow() {
                                         {selectedNode.type === 'loop' && (
                                             <div className="space-y-4 mt-4 pt-4 border-t border-border">
                                                 <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-text-primary">List Variable</label>
+                                                    <label className="text-sm font-medium text-text-primary">Array Source Path</label>
+                                                    <p className="text-xs text-text-secondary">Points to the list data, e.g. <span className="font-mono bg-border/50 px-1 rounded">record.items</span></p>
                                                     <Input
                                                         value={selectedNode.data.listVariable as string || ''}
                                                         onChange={e => updateSelectedNodeData({ listVariable: e.target.value })}
-                                                        placeholder="e.g. {{trigger.items}}"
+                                                        placeholder="Incoming array path"
                                                     />
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <div className="space-y-2 flex-1">
+                                                        <label className="text-sm font-medium text-text-primary">Max Iterations</label>
+                                                        <Input
+                                                            type="number"
+                                                            value={selectedNode.data.maxIterations as string || '100'}
+                                                            onChange={e => updateSelectedNodeData({ maxIterations: e.target.value })}
+                                                            placeholder="100"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2 flex-1">
+                                                        <label className="text-sm font-medium text-text-primary">Delay (ms)</label>
+                                                        <Input
+                                                            type="number"
+                                                            value={selectedNode.data.iterationDelay as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ iterationDelay: e.target.value })}
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Store Results Strategy</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={selectedNode.data.resultsStrategy as string || 'append'}
+                                                        onChange={e => updateSelectedNodeData({ resultsStrategy: e.target.value })}
+                                                    >
+                                                        <option value="append">Append results to array</option>
+                                                        <option value="replace">Replace input array with results</option>
+                                                        <option value="none">No aggregation (fire-and-forget)</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                         )}
@@ -1702,31 +1897,132 @@ function BuilderFlow() {
                                             </div>
                                         )}
 
-                                        {/* Utility Node Fields */}
-                                        {selectedNode.type === 'utility' && selectedNode.data.label === 'Retry Step' && (
-                                            <div className="space-y-2 mt-4 pt-4 border-t border-border">
-                                                <label className="text-sm font-medium text-text-primary">Max attempts</label>
-                                                <Input
-                                                    type="number"
-                                                    value={selectedNode.data.attempts as string || ''}
-                                                    onChange={e => updateSelectedNodeData({ attempts: e.target.value })}
-                                                    placeholder="3"
-                                                />
+                                        {selectedNode.type === 'trycatch' && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-border">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Error Variable Name</label>
+                                                    <Input
+                                                        value={selectedNode.data.errorVariable as string || 'error'}
+                                                        onChange={e => updateSelectedNodeData({ errorVariable: e.target.value })}
+                                                        placeholder="error"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Catch Only Specific Errors</label>
+                                                    <select
+                                                        multiple
+                                                        className="flex w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background h-24 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={(selectedNode.data.specificErrors as string[]) || []}
+                                                        onChange={e => {
+                                                            const options = Array.from(e.target.selectedOptions, option => option.value);
+                                                            updateSelectedNodeData({ specificErrors: options });
+                                                        }}
+                                                    >
+                                                        <option value="network">Network error</option>
+                                                        <option value="http4xx">HTTP 4xx errors</option>
+                                                        <option value="http5xx">HTTP 5xx errors</option>
+                                                        <option value="timeouts">Timeouts</option>
+                                                        <option value="validation">Validation errors</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                         )}
-                                        {selectedNode.type === 'utility' && selectedNode.data.label === 'On Error' && (
-                                            <div className="space-y-2 mt-4 pt-4 border-t border-border">
-                                                <label className="text-sm font-medium text-text-primary">Action to take</label>
-                                                <select
-                                                    className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                                                    value={selectedNode.data.action as string || ''}
-                                                    onChange={e => updateSelectedNodeData({ action: e.target.value })}
-                                                >
-                                                    <option value="">Select action...</option>
-                                                    <option value="Stop Flow">Stop Flow</option>
-                                                    <option value="Continue">Continue</option>
-                                                    <option value="Send Alert">Send Alert</option>
-                                                </select>
+
+                                        {selectedNode.type === 'error_branch' && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-border">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Detection Mode</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={selectedNode.data.detectionMode as string || 'automatic'}
+                                                        onChange={e => updateSelectedNodeData({ detectionMode: e.target.value })}
+                                                    >
+                                                        <option value="automatic">Automatic (Detect standard error structure)</option>
+                                                        <option value="custom">Custom Condition</option>
+                                                    </select>
+                                                </div>
+                                                {selectedNode.data.detectionMode === 'custom' && (
+                                                    <div className="p-3 border border-border rounded-btn bg-background-canvas space-y-2">
+                                                        <label className="text-xs font-bold text-text-primary">Custom Error Condition</label>
+                                                        <Input
+                                                            placeholder="Field e.g. error.code"
+                                                            value={selectedNode.data.field as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ field: e.target.value })}
+                                                            className="h-8 text-xs bg-white"
+                                                        />
+                                                        <select
+                                                            className="flex h-8 w-full rounded-btn border border-border bg-white px-2 py-1 text-xs"
+                                                            value={selectedNode.data.operator as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ operator: e.target.value })}
+                                                        >
+                                                            <option value="">Select operator...</option>
+                                                            <option value="equals">equals</option>
+                                                            <option value="not_equals">not equals</option>
+                                                            <option value="contains">contains</option>
+                                                        </select>
+                                                        <Input
+                                                            placeholder="Value e.g. 401"
+                                                            value={selectedNode.data.value as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ value: e.target.value })}
+                                                            className="h-8 text-xs bg-white"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Utility Node Fields */}
+                                        {selectedNode.type === 'utility' && selectedNode.data.label === 'Retry Step' && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-border">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Number of Retries</label>
+                                                        <Input
+                                                            type="number"
+                                                            min="1" max="10"
+                                                            value={selectedNode.data.attempts as string || '3'}
+                                                            onChange={e => updateSelectedNodeData({ attempts: e.target.value })}
+                                                            placeholder="3"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Retry Strategy</label>
+                                                        <select
+                                                            className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                            value={selectedNode.data.retryStrategy as string || 'immediate'}
+                                                            onChange={e => updateSelectedNodeData({ retryStrategy: e.target.value })}
+                                                        >
+                                                            <option value="immediate">Immediate Retry</option>
+                                                            <option value="fixed">Fixed Delay</option>
+                                                            <option value="exponential">Exponential Backoff</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                
+                                                {(selectedNode.data.retryStrategy === 'fixed' || selectedNode.data.retryStrategy === 'exponential') && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-text-primary">Delay (ms)</label>
+                                                        <Input
+                                                            type="number"
+                                                            value={selectedNode.data.retryDelay as string || ''}
+                                                            onChange={e => updateSelectedNodeData({ retryDelay: e.target.value })}
+                                                            placeholder="e.g. 2000"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-text-primary">Fallback Behavior</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-btn border border-border bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                                        value={selectedNode.data.fallbackBehavior as string || 'throw'}
+                                                        onChange={e => updateSelectedNodeData({ fallbackBehavior: e.target.value })}
+                                                    >
+                                                        <option value="throw">Throw error after retries</option>
+                                                        <option value="default_payload">Return default payload</option>
+                                                        <option value="null_output">Continue with null output</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                         )}
 
