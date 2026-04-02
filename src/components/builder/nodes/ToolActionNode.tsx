@@ -3,7 +3,7 @@ import { AlertTriangle, X } from 'lucide-react';
 import { getToolByActionId, IN_MEMORY_INTEGRATIONS } from '../../../lib/integrations';
 
 interface ToolActionNodeProps {
-    id: string; // Add id
+    id: string;
     data: {
         label: string;
         actionId: string;
@@ -21,79 +21,50 @@ export function ToolActionNode({ id, data, isConnectable, selected }: ToolAction
     const Icon = tool.icon;
 
     return (
-        <div className={`relative group flex flex-col min-w-[280px] bg-white rounded-md shadow-node overflow-visible transition-all duration-200 border-2 
-                        ${selected ? 'border-primary shadow-node-selected' : 'border-transparent'}`}
-        >
-            {/* IN Handle */}
-            <Handle
-                type="target"
-                position={Position.Top}
-                isConnectable={isConnectable}
-                style={{ backgroundColor: tool.color }}
-                className="-top-1.5"
-            />
-
-            {/* Colored Left Border mapping to the Tool */}
-            <div className="absolute left-0 top-0 bottom-0 w-2.5 rounded-l-md" style={{ backgroundColor: tool.color }} />
-
-            <div className="flex flex-col p-4 pl-6">
-                {/* Standard Header */}
-                <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="p-1 rounded-sm text-white" style={{ backgroundColor: tool.color }}>
-                            <Icon className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: tool.color }}>
-                            {tool.name}
-                        </span>
+        <div className="relative group font-sans">
+            <div className={`w-[190px] h-[68px] bg-white rounded-lg border shadow-soft flex items-center p-2.5 gap-3 transition-all hover:shadow-node-hover ${selected ? 'border-primary shadow-node-hover' : 'border-border'}`}>
+                <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0 shadow-sm text-white" style={{ backgroundColor: tool.color }}>
+                    <Icon className="w-7 h-7" />
+                </div>
+                <div className="flex-1 min-w-0 pr-1 text-left">
+                    <div className="text-[11px] font-bold text-text-primary leading-[1.2] line-clamp-2">
+                        {data.label || tool.name}
                     </div>
-                    {data.isConfigured === false && (
-                        <div className="text-status-warning tooltip" title="Configuration needed">
-                            <AlertTriangle className="w-4 h-4" />
-                        </div>
-                    )}
+                    <div className="text-[9px] font-semibold uppercase tracking-tight mt-0.5" style={{ color: tool.color }}>
+                        {tool.name}
+                    </div>
                 </div>
 
-                {/* Body */}
-                <h3 className="font-bold text-text-primary text-base mb-1">{data.label}</h3>
+                {/* Status Indicator (Corner) */}
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {data.isConfigured === false && <AlertTriangle className="w-3 h-3 text-status-warning" />}
+                </div>
 
-                {data.description && !data.configSummary && (
-                    <p className="text-sm text-text-secondary leading-tight mt-1">
-                        {data.description}
-                    </p>
-                )}
-
-                {/* Configuration Summary Map */}
-                {data.configSummary && Object.keys(data.configSummary).length > 0 && (
-                    <div className="mt-3 bg-background-canvas rounded-card border border-border p-2 space-y-1">
-                        {Object.entries(data.configSummary).map(([key, value]) => (
-                            <div key={key} className="flex flex-row items-center gap-2 overflow-hidden">
-                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider shrink-0 w-16">{key}:</span>
-                                <span className="text-xs text-text-primary truncate">{value}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border border-border/60 shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
-            {/* Delete Button */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    deleteElements({ nodes: [{ id }] });
-                }}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
-            >
-                <X className="w-3 h-3" />
-            </button>
-
-            {/* Default OUT Handle */}
             <Handle
-                type="source"
-                position={Position.Bottom}
+                type="target"
+                position={Position.Left}
                 isConnectable={isConnectable}
                 style={{ backgroundColor: tool.color }}
-                className="-bottom-1.5 z-10"
+                className="handle-left"
+            />
+            <Handle
+                type="source"
+                position={Position.Right}
+                isConnectable={isConnectable}
+                style={{ backgroundColor: tool.color }}
+                className="handle-right"
             />
         </div>
     );

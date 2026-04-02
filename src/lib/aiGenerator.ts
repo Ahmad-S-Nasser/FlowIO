@@ -21,7 +21,7 @@ export const generateFlowFromPrompt = async (prompt: string): Promise<AIGenerate
     const edges: Edge[] = [];
 
     // 1. Determine Trigger
-    let triggerNode: Node = {
+    const triggerNode: Node = {
         id: getId(),
         type: 'trigger',
         position: { x: 0, y: 0 },

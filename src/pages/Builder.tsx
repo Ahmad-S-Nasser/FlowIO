@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dagre from 'dagre';
-import { Trash2, Download, Upload, ArrowLeft, Play, Plus, X, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw, UserCheck, Edit, Bell, Clock, Repeat, Network, Wand2, Code, ShieldAlert, Search, Layers, GitBranch } from 'lucide-react';
+import { Trash2, Download, Upload, ArrowLeft, Play, Plus, Minus, Maximize, X, CheckCircle2, Loader2, Zap, Calendar, FileText, Database, AlertTriangle, Mail, CheckSquare, Split, Sparkles, RotateCw, UserCheck, Edit, Bell, Clock, Repeat, Network, Wand2, Code, ShieldAlert, Search, Layers, GitBranch, Brain, FileSearch, MessageCircle, Globe, MailSearch, Star, ListOrdered, Tags, Smile, Mic, Volume2, UserCircle, HeartPulse, ScanFace, Ear, Link2, ToggleRight, AlignJustify, Combine, ChevronRight, GitFork, Eye, Grid, Lock, Unlock, Undo2, Redo2, MousePointer2, Move } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
@@ -9,12 +9,15 @@ import { Modal } from '../components/ui/Modal';
 import {
     ReactFlow,
     Background,
-    Controls,
+    BackgroundVariant,
     useNodesState,
     useEdgesState,
     addEdge,
     useReactFlow,
-    ReactFlowProvider
+    ReactFlowProvider,
+    BaseEdge,
+    EdgeLabelRenderer,
+    getBezierPath
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { Connection, Edge, Node } from '@xyflow/react';
@@ -51,14 +54,137 @@ const nodeTypes = {
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
+const MOCK_DATA_SCHEMAS: Record<string, any> = {
+  trigger: {
+    id: "evt_72190",
+    event: "manual_trigger",
+    user: { id: "u_982", name: "Ahmad Nasser", role: "admin" },
+    timestamp: new Date().toISOString()
+  },
+  action: {
+    status: "success",
+    processed_at: new Date().toISOString(),
+    result: { id: "res_331", type: "email_sent", recipient: "user@example.com" }
+  },
+  tool: {
+    tool_id: "slack_integration",
+    action: "post_message",
+    payload: { channel: "#general", text: "Workflow status: Active" }
+  },
+  llm: {
+    model: "gpt-4-turbo",
+    response: "The task has been successfully analyzed and categorized.",
+    usage: { prompt_tokens: 42, completion_tokens: 12 }
+  },
+  condition: {
+    match: true,
+    evaluation_time: "12ms",
+    path: "success"
+  },
+  loop: {
+    iteration: 1,
+    total_items: 5,
+    current_item: { id: "item_1", value: "A" }
+  }
+};
+
+function CustomEdge({
+  id,
+  source,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  selected,
+}: any) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const [isHovered, setIsHovered] = useState(false);
+  const { getNode, setEdges } = useReactFlow();
+
+  const getMockData = () => {
+    const sourceNode = getNode(source);
+    if (!sourceNode) return MOCK_DATA_SCHEMAS.action;
+    const label = (sourceNode.data as any).label?.toLowerCase() || '';
+    if (label.includes('trigger')) return MOCK_DATA_SCHEMAS.trigger;
+    if (label === 'llm' || label === 'rag' || label === 'chatbot') return MOCK_DATA_SCHEMAS.llm;
+    if (label === 'condition') return MOCK_DATA_SCHEMAS.condition;
+    if (label.includes('loop')) return MOCK_DATA_SCHEMAS.loop;
+    return MOCK_DATA_SCHEMAS.action;
+  };
+
+  const schema = getMockData();
+
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, strokeWidth: selected ? 3 : 2, stroke: selected ? '#3b82f6' : '#94a3b8' }} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+          className="nodrag nopan flex flex-col items-center gap-1"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          <div className="edge-label relative">
+            <Database className="w-2.5 h-2.5 opacity-60" />
+            Data
+          </div>
+
+          {selected && (
+             <button
+                className="bg-white border border-status-error text-status-error rounded-full w-5 h-5 flex items-center justify-center shadow-sm hover:bg-status-error hover:text-white transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEdges((eds) => eds.filter(e => e.id !== id));
+                }}
+                title="Delete Link"
+             >
+                <X className="w-3 h-3" />
+             </button>
+          )}
+
+          {isHovered && !selected && (
+            <div className="edge-data-tooltip mt-1">
+              <div className="edge-data-header">
+                <span>Output Data</span>
+                <Eye className="w-2.5 h-2.5 text-primary opacity-70" />
+              </div>
+              <pre>{JSON.stringify(schema, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+const edgeTypes = {
+    custom: CustomEdge,
+};
+
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-    dagreGraph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 80 });
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
+    dagreGraph.setGraph({ rankdir: direction, ranksep: 120, nodesep: 60 });
 
     nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: 300, height: 100 });
+        dagreGraph.setNode(node.id, { width: 220, height: 80 });
     });
 
     edges.forEach((edge) => {
@@ -87,12 +213,53 @@ function BuilderFlow() {
     const { id } = useParams();
     const [searchParams] = useSearchParams();
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
-    const { setCenter } = useReactFlow();
+    const { setCenter, zoomIn, zoomOut, fitView } = useReactFlow();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Canvas Settings
+    const [showGrid, setShowGrid] = useState(true);
+    const [isLocked, setIsLocked] = useState(false);
+    const [isSelectMode, setIsSelectMode] = useState(false);
+
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+    // History Context
+    const [past, setPast] = useState<{nodes: Node[], edges: Edge[]}[]>([]);
+    const [future, setFuture] = useState<{nodes: Node[], edges: Edge[]}[]>([]);
+
+    const takeSnapshot = useCallback(() => {
+        setPast(p => [...p, { nodes, edges }].slice(-50)); // Keep last 50 states
+        setFuture([]);
+    }, [nodes, edges]);
+
+    const undo = useCallback(() => {
+        if (past.length === 0) return;
+        const previous = past[past.length - 1];
+        setPast(p => p.slice(0, -1));
+        setFuture(f => [{ nodes, edges }, ...f]);
+        setNodes(previous.nodes);
+        setEdges(previous.edges);
+    }, [past, nodes, edges, setNodes, setEdges]);
+
+    const redo = useCallback(() => {
+        if (future.length === 0) return;
+        const next = future[0];
+        setFuture(f => f.slice(1));
+        setPast(p => [...p, { nodes, edges }]);
+        setNodes(next.nodes);
+        setEdges(next.edges);
+    }, [future, nodes, edges, setNodes, setEdges]);
+
+    const onNodeDragStart = useCallback(() => {
+        takeSnapshot();
+    }, [takeSnapshot]);
+
+    // Sync nodes with lock state
+    useEffect(() => {
+        setNodes(nds => nds.map(n => ({ ...n, draggable: !isLocked, connectable: !isLocked })));
+    }, [isLocked, setNodes]);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [isTestModalOpen, setIsTestModalOpen] = useState(false);
     const [testState, setTestState] = useState<'idle' | 'running' | 'success'>('idle');
@@ -103,6 +270,87 @@ function BuilderFlow() {
 
     // AI Assistant State
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+
+    // Sidebar Search State
+    const [sidebarSearch, setSidebarSearch] = useState('');
+
+    const filteredGroups = useMemo(() => {
+        const q = sidebarSearch.toLowerCase().trim();
+        const match = (label: string) => !q || label.toLowerCase().includes(q);
+
+        const triggerNodes = [
+            { type: 'trigger', label: 'Manual Trigger', icon: Play, color: 'status-success' },
+            { type: 'trigger', label: 'Record Created', icon: Database, color: 'status-success' },
+            { type: 'trigger', label: 'Form Submitted', icon: FileText, color: 'status-success' },
+            { type: 'trigger', label: 'Schedule', icon: Calendar, color: 'status-success' },
+            { type: 'trigger', label: 'Record Deleted', icon: Trash2, color: 'status-success' },
+            { type: 'trigger', label: 'Field Updated', icon: Edit, color: 'status-success' },
+        ];
+        const logicNodes = [
+            { type: 'condition', label: 'Condition', icon: Split, color: 'status-warning' },
+            { type: 'loop', label: 'For Each Loop', icon: Repeat, color: 'status-info' },
+            { type: 'parallel', label: 'Parallel Actions', icon: Network, color: 'status-info' },
+        ];
+        const actionNodes = [
+            { type: 'action', label: 'Send Email', icon: Mail, color: 'status-info' },
+            { type: 'action', label: 'Create Task', icon: CheckSquare, color: 'status-info' },
+            { type: 'action', label: 'Request Approval', icon: UserCheck, color: 'status-info' },
+            { type: 'action', label: 'Update Record', icon: Edit, color: 'status-info' },
+            { type: 'action', label: 'Call Workflow', icon: Layers, color: 'status-info' },
+            { type: 'action', label: 'Send Notification', icon: Bell, color: 'status-info' },
+            { type: 'action', label: 'Delay', icon: Clock, color: 'status-info' },
+            { type: 'action', label: 'Transform Data', icon: Wand2, color: 'status-info' },
+            { type: 'action', label: 'Set Variable', icon: Code, color: 'status-info' },
+            { type: 'action', label: 'Query Rows', icon: Search, color: 'status-info' },
+        ];
+        const aiTextNodes = [
+            { type: 'action', label: 'LLM', icon: Brain, color: 'ai-accent' },
+            { type: 'action', label: 'RAG', icon: Database, color: 'ai-accent' },
+            { type: 'action', label: 'AI Search', icon: FileSearch, color: 'ai-accent' },
+            { type: 'action', label: 'Chatbot', icon: MessageCircle, color: 'ai-accent' },
+            { type: 'action', label: 'Web Scraper', icon: Globe, color: 'ai-accent' },
+            { type: 'action', label: 'Email Scanner', icon: MailSearch, color: 'ai-accent' },
+            { type: 'action', label: 'Recommender', icon: Star, color: 'ai-accent' },
+            { type: 'action', label: 'Ranker', icon: ListOrdered, color: 'ai-accent' },
+            { type: 'action', label: 'AI Classifier', icon: Tags, color: 'ai-accent' },
+            { type: 'action', label: 'Tone Analyzer', icon: Smile, color: 'ai-accent' },
+        ];
+        const aiSpeechNodes = [
+            { type: 'action', label: 'STT (Speech to Text)', icon: Mic, color: 'ai-accent' },
+            { type: 'action', label: 'TTS (Text to Speech)', icon: Volume2, color: 'ai-accent' },
+            { type: 'action', label: 'Speaker Detection', icon: UserCircle, color: 'ai-accent' },
+            { type: 'action', label: 'Voice Sentiment', icon: HeartPulse, color: 'ai-accent' },
+        ];
+        const aiVisionNodes = [
+            { type: 'action', label: 'Face Recognition', icon: ScanFace, color: 'ai-accent' },
+            { type: 'action', label: 'Ear Recognition', icon: Ear, color: 'ai-accent' },
+        ];
+        const aiLinkerNodes = [
+            { type: 'action', label: 'Prompt Linker', icon: Link2, color: 'ai-accent' },
+            { type: 'action', label: 'Router', icon: GitFork, color: 'ai-accent' },
+            { type: 'action', label: 'Model Switcher', icon: ToggleRight, color: 'ai-accent' },
+            { type: 'action', label: 'Normalizer', icon: AlignJustify, color: 'ai-accent' },
+            { type: 'action', label: 'Aggregator', icon: Combine, color: 'ai-accent' },
+        ];
+        const errorNodes = [
+            { type: 'trycatch', label: 'Try / Catch', icon: ShieldAlert, color: 'status-error' },
+            { type: 'error_branch', label: 'Error Branch', icon: GitBranch, color: 'status-warning' },
+            { type: 'utility', label: 'Retry Step', icon: RotateCw, color: 'status-info' },
+        ];
+
+        return {
+            triggers: triggerNodes.filter(n => match(n.label)),
+            logic: logicNodes.filter(n => match(n.label)),
+            actions: actionNodes.filter(n => match(n.label)),
+            aiText: aiTextNodes.filter(n => match(n.label)),
+            aiSpeech: aiSpeechNodes.filter(n => match(n.label)),
+            aiVision: aiVisionNodes.filter(n => match(n.label)),
+            aiLinkers: aiLinkerNodes.filter(n => match(n.label)),
+            errors: errorNodes.filter(n => match(n.label)),
+            hasAI: [...aiTextNodes, ...aiSpeechNodes, ...aiVisionNodes, ...aiLinkerNodes].some(n => match(n.label)),
+            hasAIModels: [...aiTextNodes, ...aiSpeechNodes, ...aiVisionNodes].some(n => match(n.label)),
+        };
+    }, [sidebarSearch]);
 
     // Variable Insert State
     const [insertVariableField, setInsertVariableField] = useState<string | null>(null);
@@ -119,7 +367,7 @@ function BuilderFlow() {
     const focusNode = (node: Node) => {
         setSelectedNode(node);
         // node.position is top-left, center it
-        setCenter(node.position.x + 150, node.position.y + 50, { zoom: 1, duration: 800 });
+        setCenter(node.position.x + 110, node.position.y + 40, { zoom: 1, duration: 800 });
     };
 
     useEffect(() => {
@@ -216,7 +464,10 @@ function BuilderFlow() {
         }
     };
 
-    const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds)), [setEdges]);
+    const onConnect = useCallback((params: Connection | Edge) => {
+        takeSnapshot();
+        setEdges((eds) => addEdge({ ...params, type: 'custom', animated: false }, eds));
+    }, [setEdges, takeSnapshot]);
 
     const runTestSimulation = () => {
         setTestState('running');
@@ -226,6 +477,7 @@ function BuilderFlow() {
     };
 
     const addInitialNode = (type: string, label: string) => {
+        takeSnapshot();
         const newNode: Node = {
             id: getId(),
             type,
@@ -259,7 +511,7 @@ function BuilderFlow() {
             const newData = { ...node.data, ...updates };
 
             let isConfigured = false;
-            let configSummary: Record<string, string> = {};
+            const configSummary: Record<string, string> = {};
 
             if (node.type === 'trigger') {
                 if (newData.label === 'Schedule') {
@@ -402,20 +654,22 @@ function BuilderFlow() {
     }, []);
 
     const onNodesDelete = useCallback((deletedNodes: Node[]) => {
+        takeSnapshot();
         if (selectedNode && deletedNodes.some(n => n.id === selectedNode.id)) {
             setSelectedNode(null);
         }
-    }, [selectedNode]);
+    }, [selectedNode, takeSnapshot]);
 
     const onEdgesDelete = useCallback((_deletedEdges: Edge[]) => {
-        // Handle edge deletions if needed
-    }, []);
+        takeSnapshot();
+    }, [takeSnapshot]);
 
     const handleDeleteNode = useCallback((nodeId: string) => {
+        takeSnapshot();
         setNodes((nds) => nds.filter((node) => node.id !== nodeId));
         setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
         setSelectedNode(null);
-    }, [setNodes, setEdges]);
+    }, [setNodes, setEdges, takeSnapshot]);
 
     const onPaneClick = useCallback(() => {
         setSelectedNode(null);
@@ -447,6 +701,7 @@ function BuilderFlow() {
                 y: event.clientY - reactFlowBounds.top - 40,
             };
 
+            takeSnapshot();
             const newNode: Node = {
                 id: getId(),
                 type,
@@ -464,7 +719,7 @@ function BuilderFlow() {
             setNodes((nds) => nds.concat(newNode));
             setSelectedNode(newNode);
         },
-        [setNodes]
+        [setNodes, takeSnapshot]
     );
 
     return (
@@ -531,322 +786,415 @@ function BuilderFlow() {
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Sidebar - Node Library */}
-                <aside className="w-64 bg-white border-r border-border flex flex-col shrink-0 z-10 shadow-sm">
-                    <div className="p-4 border-b border-border font-medium text-sm text-text-secondary uppercase tracking-wider">
-                        Blocks Library
+                <aside className="w-64 bg-white border-r border-border/60 flex flex-col shrink-0 z-10">
+                    <div className="p-3 border-b border-border/60">
+                        <div className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-2">Blocks Library</div>
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Search blocks..."
+                                value={sidebarSearch}
+                                onChange={(e) => setSidebarSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-background-canvas border border-border/60 rounded-lg focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 placeholder:text-text-muted/60 transition-colors"
+                            />
+                            {sidebarSearch && (
+                                <button onClick={() => setSidebarSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary">
+                                    <X className="w-3 h-3" />
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                        <div>
-                            <h3 className="text-sm font-bold text-text-primary mb-3">Triggers</h3>
-                            <div className="space-y-2">
-                                <div
-                                    className="p-2 bg-white border border-border rounded-full border-l-4 border-l-status-success cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trigger', 'Manual Trigger')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                                        <Play className="w-4 h-4 text-status-success" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Manual Trigger</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-full border-l-4 border-l-status-success cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trigger', 'Record Created')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                                        <Database className="w-4 h-4 text-status-success" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Record Created</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-full border-l-4 border-l-status-success cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trigger', 'Form Submitted')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                                        <FileText className="w-4 h-4 text-status-success" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Form Submitted</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-full border-l-4 border-l-status-success cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trigger', 'Schedule')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                                        <Calendar className="w-4 h-4 text-status-success" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Schedule</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-full border-l-4 border-l-status-success cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trigger', 'Record Deleted')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                                        <Trash2 className="w-4 h-4 text-status-success" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Record Deleted</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-full border-l-4 border-l-status-success cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trigger', 'Field Updated')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-status-success/10 flex items-center justify-center shrink-0">
-                                        <Edit className="w-4 h-4 text-status-success" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Field Updated</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-text-primary mb-3">Logic</h3>
-                            <div className="space-y-2">
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 relative overflow-hidden drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'condition', 'Condition')} draggable
-                                >
-                                    {/* Simulated hexagon edge for sidebar styling */}
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning" />
-                                    <div className="w-8 h-8 rounded-md bg-status-warning/10 flex items-center justify-center shrink-0 z-10 border border-status-warning/20">
-                                        <Split className="w-4 h-4 text-status-warning" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2 z-10">Condition</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 relative overflow-hidden drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'loop', 'For Each')} draggable
-                                >
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-info" />
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0 z-10 border border-status-info/20">
-                                        <Repeat className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2 z-10">For Each Loop</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 relative overflow-hidden drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'parallel', 'Parallel Actions')} draggable
-                                >
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-info" />
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0 z-10 border border-status-info/20">
-                                        <Network className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2 z-10">Parallel Actions</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-text-primary mb-3">Actions</h3>
-                            <div className="space-y-2">
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Send Email')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Mail className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Send Email</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Create Task')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <CheckSquare className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Create Task</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Request Approval')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <UserCheck className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Request Approval</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Update Record')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Edit className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Update Record</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Call Workflow')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Layers className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Call Workflow</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Send Notification')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Bell className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Send Notification</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Delay')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Clock className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Delay</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Transform Data')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Wand2 className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Transform Data</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Set Variable')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Code className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Set Variable</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'action', 'Query Rows')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <Search className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Query Rows</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                        {/* ── Render a sidebar node block ── */}
+                        {(() => {
+                            const renderNode = (node: { type: string; label: string; icon: any; color: string }, isAI = false) => {
+                                 const NodeIcon = node.icon;
+                                const q = sidebarSearch.toLowerCase().trim();
+                                const labelParts = q ? node.label.split(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')) : [node.label];
 
-                        <div>
-                            <h3 className="text-sm font-bold text-text-primary mb-3">Error & Utility</h3>
-                            <div className="space-y-2">
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-error cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'trycatch', 'Try / Catch')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-error/10 flex items-center justify-center shrink-0">
-                                        <ShieldAlert className="w-4 h-4 text-status-error" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Try / Catch</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 relative overflow-hidden drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'error_branch', 'Error Branch')} draggable
-                                >
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning" />
-                                    <div className="w-8 h-8 rounded-md bg-status-warning/10 flex items-center justify-center shrink-0 z-10 border border-status-warning/20">
-                                        <GitBranch className="w-4 h-4 text-status-warning" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2 z-10">Error Branch</span>
-                                </div>
-                                <div
-                                    className="p-2 bg-white border border-border rounded-md border-l-4 border-l-status-info cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm"
-                                    onDragStart={(e) => onDragStart(e, 'utility', 'Retry Step')} draggable
-                                >
-                                    <div className="w-8 h-8 rounded-md bg-status-info/10 flex items-center justify-center shrink-0">
-                                        <RotateCw className="w-4 h-4 text-status-info" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary pr-2">Retry Step</span>
-                                </div>
-                            </div>
-                        </div>
+                                // Explicit color mapping to ensure Tailwind v4 pick-up
+                                const colorMap: Record<string, string> = {
+                                    'status-success': 'text-status-success bg-status-success/10',
+                                    'status-warning': 'text-status-warning bg-status-warning/10',
+                                    'status-info': 'text-status-info bg-status-info/10',
+                                    'status-error': 'text-status-error bg-status-error/10',
+                                    'ai-accent': 'text-ai-accent bg-ai-accent/15',
+                                };
 
-                        {/* Connected Tools Library */}
-                        <div className="pt-2">
-                            <h3 className="text-sm font-bold text-text-primary mb-3">Tools</h3>
-                            <div className="space-y-4">
-                                {IN_MEMORY_INTEGRATIONS.map(tool => {
-                                    const Icon = tool.icon;
-                                    // For MVP, show all tools or just connected ones
-                                    if (tool.status !== 'connected') return null;
+                                const colorClasses = colorMap[node.color] || 'text-text-muted bg-border/20';
 
-                                    return (
-                                        <div key={tool.id} className="space-y-2">
-                                            <div className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-text-muted">
-                                                <Icon className="w-3 h-3" />
-                                                {tool.name}
-                                            </div>
-                                            {tool.triggers && tool.triggers.length > 0 && (
-                                                <div className="mb-2">
-                                                    <span className="text-[10px] text-text-muted font-medium mb-1 inline-block uppercase tracking-wide">Triggers</span>
-                                                    {tool.triggers.map(trigger => (
-                                                        <div
-                                                            key={trigger.id}
-                                                            className="p-2 bg-white border border-border rounded-full border-l-4 cursor-grab hover:shadow-md transition-shadow flex items-center gap-2 drop-shadow-sm mb-1 line-clamp-1"
-                                                            style={{ borderLeftColor: tool.color }}
-                                                            onDragStart={(e) => onDragStart(e, 'tool_trigger', trigger.name, { triggerId: trigger.id })} draggable
-                                                        >
-                                                            <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: tool.color }}>
-                                                                <Icon className="w-3 h-3" />
-                                                            </div>
-                                                            <span className="text-sm font-medium text-text-primary pr-2">{trigger.name}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {tool.actions && tool.actions.length > 0 && (
-                                                <div>
-                                                    <span className="text-[10px] text-text-muted font-medium mb-1 inline-block uppercase tracking-wide">Actions</span>
-                                                    {tool.actions.map(action => (
-                                                        <div
-                                                            key={action.id}
-                                                            className="p-2 bg-white border border-border rounded-md cursor-grab hover:shadow-md transition-shadow flex items-center gap-3 drop-shadow-sm relative overflow-hidden mb-1"
-                                                            onDragStart={(e) => onDragStart(e, 'tool', action.name, { actionId: action.id })} draggable
-                                                        >
-                                                            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: tool.color }} />
-                                                            <div className="w-8 h-8 pl-1 rounded-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: tool.color }}>
-                                                                <Icon className="w-4 h-4" />
-                                                            </div>
-                                                            <span className="text-sm font-medium text-text-primary pr-2">{action.name}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                return (
+                                    <div
+                                        key={node.label}
+                                        className={`p-2 bg-white border border-border/60 rounded-lg cursor-grab hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all flex items-center gap-2.5 ${isAI ? 'bg-gradient-to-r from-[rgba(124,58,237,0.04)] to-white border-l-2 border-l-ai-accent/60' : 'border-l-2 border-l-' + (node.color.split('-')[1] || 'gray-400')}`}
+                                        onDragStart={(e) => onDragStart(e, node.type, node.label === 'For Each Loop' ? 'For Each' : node.label)}
+                                        draggable
+                                    >
+                                        <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${colorClasses.split(' ')[1]}`}>
+                                            <NodeIcon className={`w-4 h-4 ${colorClasses.split(' ')[0]}`} />
                                         </div>
-                                    );
-                                })}
-                                {IN_MEMORY_INTEGRATIONS.every(t => t.status !== 'connected') && (
-                                    <div className="text-xs text-text-secondary italic text-center py-4 bg-background-canvas rounded-card border border-border">
-                                        No tools connected. Go to Integrations to connect apps.
+                                        <span className="text-[13px] font-medium text-text-primary pr-1 truncate flex-1">
+                                            {q ? labelParts.map((part, i) =>
+                                                part.toLowerCase() === q ? <mark key={i} className="search-highlight">{part}</mark> : part
+                                            ) : node.label}
+                                        </span>
+                                        {isAI && <Sparkles className="w-3 h-3 text-ai-accent/50 shrink-0 ml-auto" />}
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                );
+                            };
+
+                            const isSearching = !!sidebarSearch.trim();
+
+                            return (
+                                <>
+                                    {/* ── Triggers ── */}
+                                    {filteredGroups.triggers.length > 0 && (
+                                        <details className="sidebar-group" open>
+                                            <summary className="text-[11px] font-semibold text-text-primary mb-1.5 cursor-pointer list-none flex items-center justify-between py-1.5 select-none hover:text-primary transition-colors">
+                                                Triggers
+                                                <ChevronRight className="w-3.5 h-3.5 text-text-muted chevron-icon" />
+                                            </summary>
+                                            <div className="space-y-1 mb-3 pl-0.5">
+                                                {filteredGroups.triggers.map(n => renderNode(n))}
+                                            </div>
+                                        </details>
+                                    )}
+
+                                    {/* ── Logic ── */}
+                                    {filteredGroups.logic.length > 0 && (
+                                        <details className="sidebar-group" open>
+                                            <summary className="text-[11px] font-semibold text-text-primary mb-1.5 cursor-pointer list-none flex items-center justify-between py-1.5 select-none hover:text-primary transition-colors">
+                                                Logic
+                                                <ChevronRight className="w-3.5 h-3.5 text-text-muted chevron-icon" />
+                                            </summary>
+                                            <div className="space-y-1 mb-3 pl-0.5">
+                                                {filteredGroups.logic.map(n => renderNode(n))}
+                                            </div>
+                                        </details>
+                                    )}
+
+                                    {/* ── Actions ── */}
+                                    {filteredGroups.actions.length > 0 && (
+                                        <details className="sidebar-group" open>
+                                            <summary className="text-[11px] font-semibold text-text-primary mb-1.5 cursor-pointer list-none flex items-center justify-between py-1.5 select-none hover:text-primary transition-colors">
+                                                Actions
+                                                <ChevronRight className="w-3.5 h-3.5 text-text-muted chevron-icon" />
+                                            </summary>
+                                            <div className="space-y-1 mb-3 pl-0.5">
+                                                {filteredGroups.actions.map(n => renderNode(n))}
+                                            </div>
+                                        </details>
+                                    )}
+
+                                    {/* ── AI Extensions ── */}
+                                    {filteredGroups.hasAI && (
+                                        <details className="sidebar-group" open>
+                                            <summary className="text-[11px] font-semibold text-text-primary mb-1.5 cursor-pointer list-none flex items-center justify-between py-1.5 select-none hover:text-ai-accent transition-colors">
+                                                <span className="flex items-center gap-1">AI Extensions <Sparkles className="w-3 h-3 text-ai-accent/50" /></span>
+                                                <ChevronRight className="w-3.5 h-3.5 text-text-muted chevron-icon" />
+                                            </summary>
+                                            <div className="space-y-1 mb-3 pl-1">
+                                                {/* AI Models */}
+                                                {filteredGroups.hasAIModels && (
+                                                    <details className="sidebar-group" open>
+                                                        <summary className="text-[10px] font-semibold text-text-muted mb-1 cursor-pointer list-none flex items-center gap-1 py-1 select-none uppercase tracking-wider hover:text-ai-accent transition-colors">
+                                                            <ChevronRight className="w-3 h-3 chevron-icon" />
+                                                            AI Models
+                                                        </summary>
+                                                        <div className="pl-2 space-y-0.5">
+                                                            {/* Text */}
+                                                            {filteredGroups.aiText.length > 0 && (
+                                                                <details className="sidebar-group" open>
+                                                                    <summary className="text-[10px] font-medium text-text-muted/80 mb-1 cursor-pointer list-none flex items-center gap-1 py-0.5 select-none">
+                                                                        <ChevronRight className="w-2.5 h-2.5 chevron-icon" />
+                                                                        Text
+                                                                    </summary>
+                                                                    <div className="space-y-1 pl-1 mb-2">
+                                                                        {filteredGroups.aiText.map(n => renderNode(n, true))}
+                                                                    </div>
+                                                                </details>
+                                                            )}
+                                                            {/* Speech */}
+                                                            {filteredGroups.aiSpeech.length > 0 && (
+                                                                <details className="sidebar-group" open>
+                                                                    <summary className="text-[10px] font-medium text-text-muted/80 mb-1 cursor-pointer list-none flex items-center gap-1 py-0.5 select-none">
+                                                                        <ChevronRight className="w-2.5 h-2.5 chevron-icon" />
+                                                                        Speech
+                                                                    </summary>
+                                                                    <div className="space-y-1 pl-1 mb-2">
+                                                                        {filteredGroups.aiSpeech.map(n => renderNode(n, true))}
+                                                                    </div>
+                                                                </details>
+                                                            )}
+                                                            {/* Vision */}
+                                                            {filteredGroups.aiVision.length > 0 && (
+                                                                <details className="sidebar-group" open>
+                                                                    <summary className="text-[10px] font-medium text-text-muted/80 mb-1 cursor-pointer list-none flex items-center gap-1 py-0.5 select-none">
+                                                                        <ChevronRight className="w-2.5 h-2.5 chevron-icon" />
+                                                                        Vision
+                                                                    </summary>
+                                                                    <div className="space-y-1 pl-1 mb-2">
+                                                                        {filteredGroups.aiVision.map(n => renderNode(n, true))}
+                                                                    </div>
+                                                                </details>
+                                                            )}
+                                                        </div>
+                                                    </details>
+                                                )}
+                                                {/* AI Linkers */}
+                                                {filteredGroups.aiLinkers.length > 0 && (
+                                                    <details className="sidebar-group" open>
+                                                        <summary className="text-[10px] font-semibold text-text-muted mb-1 cursor-pointer list-none flex items-center gap-1 py-1 select-none uppercase tracking-wider hover:text-ai-accent transition-colors">
+                                                            <ChevronRight className="w-3 h-3 chevron-icon" />
+                                                            AI Linkers
+                                                        </summary>
+                                                        <div className="space-y-1 pl-3 mb-2">
+                                                            {filteredGroups.aiLinkers.map(n => renderNode(n, true))}
+                                                        </div>
+                                                    </details>
+                                                )}
+                                            </div>
+                                        </details>
+                                    )}
+
+                                    {/* ── Error & Utility ── */}
+                                    {filteredGroups.errors.length > 0 && (
+                                        <details className="sidebar-group" open>
+                                            <summary className="text-[11px] font-semibold text-text-primary mb-1.5 cursor-pointer list-none flex items-center justify-between py-1.5 select-none hover:text-primary transition-colors">
+                                                Error & Utility
+                                                <ChevronRight className="w-3.5 h-3.5 text-text-muted chevron-icon" />
+                                            </summary>
+                                            <div className="space-y-1 mb-3 pl-0.5">
+                                                {filteredGroups.errors.map(n => renderNode(n))}
+                                            </div>
+                                        </details>
+                                    )}
+
+                                    {/* ── Connected Tools Library ── */}
+                                    {!isSearching && (
+                                        <details className="sidebar-group" open>
+                                            <summary className="text-[11px] font-semibold text-text-primary mb-1.5 cursor-pointer list-none flex items-center justify-between py-1.5 select-none hover:text-primary transition-colors">
+                                                Tools
+                                                <ChevronRight className="w-3.5 h-3.5 text-text-muted chevron-icon" />
+                                            </summary>
+                                            <div className="space-y-3 mb-3">
+                                                {IN_MEMORY_INTEGRATIONS.map(tool => {
+                                                    const ToolIcon = tool.icon;
+                                                    if (tool.status !== 'connected') return null;
+                                                    return (
+                                                        <div key={tool.id} className="space-y-1.5">
+                                                            <div className="flex items-center gap-1.5 px-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                                                                <ToolIcon className="w-3 h-3" />
+                                                                {tool.name}
+                                                            </div>
+                                                            {tool.triggers && tool.triggers.length > 0 && (
+                                                                <div className="mb-1.5">
+                                                                    <span className="text-[9px] text-text-muted font-medium mb-0.5 inline-block uppercase tracking-wide">Triggers</span>
+                                                                    {tool.triggers.map(trigger => (
+                                                                        <div
+                                                                            key={trigger.id}
+                                                                            className="p-2 bg-white border border-border/60 rounded-lg cursor-grab hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all flex items-center gap-2 mb-1"
+                                                                            style={{ borderLeftWidth: 2, borderLeftColor: tool.color }}
+                                                                            onDragStart={(e) => onDragStart(e, 'tool_trigger', trigger.name, { triggerId: trigger.id })} draggable
+                                                                        >
+                                                                            <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: tool.color }}>
+                                                                                <ToolIcon className="w-3 h-3" />
+                                                                            </div>
+                                                                            <span className="text-[13px] font-medium text-text-primary pr-1">{trigger.name}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {tool.actions && tool.actions.length > 0 && (
+                                                                <div>
+                                                                    <span className="text-[9px] text-text-muted font-medium mb-0.5 inline-block uppercase tracking-wide">Actions</span>
+                                                                    {tool.actions.map(action => (
+                                                                        <div
+                                                                            key={action.id}
+                                                                            className="p-2 bg-white border border-border/60 rounded-lg cursor-grab hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all flex items-center gap-2.5 mb-1"
+                                                                            style={{ borderLeftWidth: 2, borderLeftColor: tool.color }}
+                                                                            onDragStart={(e) => onDragStart(e, 'tool', action.name, { actionId: action.id })} draggable
+                                                                        >
+                                                                            <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: tool.color }}>
+                                                                                <ToolIcon className="w-3.5 h-3.5" />
+                                                                            </div>
+                                                                            <span className="text-[13px] font-medium text-text-primary pr-1">{action.name}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                                {IN_MEMORY_INTEGRATIONS.every(t => t.status !== 'connected') && (
+                                                    <div className="text-xs text-text-secondary italic text-center py-4 bg-background-canvas rounded-lg border border-border/60">
+                                                        No tools connected. Go to Integrations to connect apps.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </details>
+                                    )}
+
+                                    {/* Empty search state */}
+                                    {isSearching && filteredGroups.triggers.length === 0 && filteredGroups.logic.length === 0 && filteredGroups.actions.length === 0 && !filteredGroups.hasAI && filteredGroups.errors.length === 0 && (
+                                        <div className="text-xs text-text-muted text-center py-8">
+                                            No blocks match "{sidebarSearch}"
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 </aside>
+
 
                 {/* Center Canvas */}
                 <main className="flex-1 h-full w-full relative bg-background-canvas" ref={reactFlowWrapper}>
                     <ReactFlow
-                        nodes={nodes}
+                        nodes={nodes.map(node => ({ ...node, draggable: !isLocked, selectable: true }))}
                         edges={edges}
                         nodeTypes={nodeTypes}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        onNodesDelete={onNodesDelete}
-                        onEdgesDelete={onEdgesDelete}
+                        onNodesChange={(changes) => !isLocked && onNodesChange(changes)}
+                        onEdgesChange={(changes) => !isLocked && onEdgesChange(changes)}
+                        onConnect={(params) => !isLocked && onConnect(params)}
+                        onNodesDelete={(nodes) => !isLocked && onNodesDelete(nodes)}
+                        onEdgesDelete={(edges) => !isLocked && onEdgesDelete(edges)}
                         onNodeClick={onNodeClick}
                         onPaneClick={onPaneClick}
-                        onDrop={onDrop}
+                        onNodeDragStart={!isLocked ? onNodeDragStart : undefined}
+                        onDrop={onDrop} // Allow adding nodes while locked as per feedback
                         onDragOver={onDragOver}
-                        defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
-                        connectionLineType={'smoothstep' as any}
+                        edgeTypes={edgeTypes}
+                        defaultEdgeOptions={{ type: 'custom', animated: false }}
+                        connectionLineType={'custom' as any}
                         fitView
                         className="bg-background-canvas"
+                        nodesDraggable={!isLocked}
+                        nodesConnectable={!isLocked}
+                        panOnDrag={!isLocked && !isSelectMode}
+                        selectionOnDrag={!isLocked && isSelectMode}
+                        selectionMode={isSelectMode ? 'partial' as any : undefined}
+                        elementsSelectable={true} 
+                        deleteKeyCode={isLocked ? null : 'Delete'}
+                        multiSelectionKeyCode={isLocked ? null : 'Shift'}
+                        preventScrolling={isLocked}
                     >
-                        <Background gap={24} size={2} color="#D1D5DB" />
-                        <Controls showInteractive={false} className="border-border shadow-soft rounded-lg overflow-hidden" />
+                        {showGrid && <Background gap={24} size={1.5} color="#cbd5e1" variant={BackgroundVariant.Dots} />}
+                        
+                        {/* Unified Canvas Settings Toolbar */}
+                        <div className="absolute bottom-6 left-6 z-[20] flex items-center bg-white/95 backdrop-blur-lg border border-border/80 shadow-2xl rounded-2xl p-1.5 gap-1.5 ring-1 ring-black/5">
+                            {/* History Group */}
+                            <div className="flex items-center gap-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 text-text-secondary hover:bg-black/5 hover:text-text-primary rounded-xl transition-all disabled:opacity-50"
+                                    onClick={undo}
+                                    disabled={past.length === 0 || isLocked}
+                                    title="Undo"
+                                >
+                                    <Undo2 className="w-4.5 h-4.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 text-text-secondary hover:bg-black/5 hover:text-text-primary rounded-xl transition-all disabled:opacity-50"
+                                    onClick={redo}
+                                    disabled={future.length === 0 || isLocked}
+                                    title="Redo"
+                                >
+                                    <Redo2 className="w-4.5 h-4.5" />
+                                </Button>
+                            </div>
+
+                            <div className="w-px h-4 bg-border/60 mx-1" />
+
+                            {/* Mode Group */}
+                            <div className="flex items-center gap-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-9 w-9 p-0 rounded-xl transition-all ${!isSelectMode ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-text-tertiary hover:bg-black/5'}`}
+                                    onClick={() => !isLocked && setIsSelectMode(false)}
+                                    title="Pan Mode"
+                                    disabled={isLocked}
+                                >
+                                    <Move className="w-4.5 h-4.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-9 w-9 p-0 rounded-xl transition-all ${isSelectMode ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-text-tertiary hover:bg-black/5'}`}
+                                    onClick={() => !isLocked && setIsSelectMode(true)}
+                                    title="Select Mode"
+                                    disabled={isLocked}
+                                >
+                                    <MousePointer2 className="w-4.5 h-4.5" />
+                                </Button>
+                            </div>
+
+                            <div className="w-px h-4 bg-border/60 mx-1" />
+
+                            {/* Zoom Group */}
+                            <div className="flex items-center gap-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 text-text-secondary hover:bg-black/5 hover:text-text-primary rounded-xl transition-all"
+                                    onClick={() => zoomOut()}
+                                    title="Minimize (Zoom Out)"
+                                >
+                                    <Minus className="w-4.5 h-4.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 text-text-secondary hover:bg-black/5 hover:text-text-primary rounded-xl transition-all"
+                                    onClick={() => zoomIn()}
+                                    title="Maximize (Zoom In)"
+                                >
+                                    <Plus className="w-4.5 h-4.5" />
+                                </Button>
+                            </div>
+
+                            <div className="w-px h-4 bg-border/60 mx-1" />
+
+                            {/* View Group */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 w-9 p-0 text-text-secondary hover:bg-black/5 hover:text-text-primary rounded-xl transition-all"
+                                onClick={() => fitView()}
+                                title="Focus (Fit View)"
+                            >
+                                <Maximize className="w-4.5 h-4.5" />
+                            </Button>
+
+                            <div className="w-px h-4 bg-border/60 mx-1" />
+
+                            {/* Settings Group */}
+                            <div className="flex items-center gap-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-9 w-9 p-0 rounded-xl transition-all ${!showGrid ? 'text-text-tertiary hover:bg-black/5' : 'text-primary bg-primary/10 hover:bg-primary/20'}`}
+                                    onClick={() => setShowGrid(!showGrid)}
+                                    title={showGrid ? "Hide Grid" : "Show Grid"}
+                                >
+                                    <Grid className="w-4.5 h-4.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-9 w-9 p-0 rounded-xl transition-all ${isLocked ? 'text-status-error bg-status-error/10 hover:bg-status-error/20' : 'text-text-tertiary hover:bg-black/5'}`}
+                                    onClick={() => setIsLocked(!isLocked)}
+                                    title={isLocked ? "Unlock Canvas" : "Lock Canvas"}
+                                >
+                                    {isLocked ? <Lock className="w-4.5 h-4.5" /> : <Unlock className="w-4.5 h-4.5" />}
+                                </Button>
+                            </div>
+                        </div>
 
                         {nodes.length === 0 && (
                             <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
@@ -894,7 +1242,6 @@ function BuilderFlow() {
                             </div>
                         )}
 
-                        <Controls className="border-border shadow-soft rounded-lg overflow-hidden" />
 
                     </ReactFlow>
 

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { AlertTriangle, X } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
@@ -24,41 +24,22 @@ export function ToolTriggerNode({ id, data, isConnectable, selected }: ToolTrigg
 
     return (
         <div className="relative group font-sans">
-            <div className={`w-[320px] bg-white rounded-[32px] shadow-sm flex items-stretch overflow-visible transition-all hover:shadow-md border-2 
-                        ${selected ? 'border-primary shadow-node-selected' : 'border-border'}`}>
-                {/* Left Stripe */}
-                <div className="w-6 shrink-0 rounded-l-[32px]" style={{ backgroundColor: tool.color }}></div>
-
-                <div className="p-4 pl-3 flex-1 flex flex-col justify-center gap-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="p-1 rounded-sm text-white shrink-0" style={{ backgroundColor: tool.color }}>
-                            <Icon className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: tool.color }}>
-                            {tool.name} Trigger
-                        </span>
-                        {data.isConfigured === false && (
-                            <div className="ml-auto text-status-warning tooltip" title="Configuration needed">
-                                <AlertTriangle className="w-4 h-4" />
-                            </div>
-                        )}
+            <div className={`w-[190px] h-[68px] bg-white rounded-lg border shadow-soft flex items-center p-2.5 gap-3 transition-all hover:shadow-node-hover ${selected ? 'border-primary shadow-node-hover' : 'border-border'}`}>
+                <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0 shadow-sm text-white" style={{ backgroundColor: tool.color }}>
+                    <Icon className="w-7 h-7" />
+                </div>
+                <div className="flex-1 min-w-0 pr-1 text-left">
+                    <div className="text-[11px] font-bold text-text-primary leading-[1.2] line-clamp-2">
+                        {data.label || tool.name}
                     </div>
+                    <div className="text-[9px] font-semibold uppercase tracking-tight mt-0.5" style={{ color: tool.color }}>
+                        {tool.name} Trigger
+                    </div>
+                </div>
 
-                    <div className="text-sm font-bold text-text-primary truncate">{data.label}</div>
-
-                    {data.configSummary && Object.keys(data.configSummary).length > 0 ? (
-                        <div className="mt-2 text-[11px] rounded p-2 text-text-secondary border border-border space-y-1 bg-background-canvas">
-                            {Object.entries(data.configSummary).map(([k, v]) => (
-                                <div key={k} className="truncate"><span className="font-medium text-text-primary">{k}:</span> {v as React.ReactNode}</div>
-                            ))}
-                        </div>
-                    ) : (data.description ? (
-                        <div className="text-xs text-text-secondary mt-1 line-clamp-2">{data.description}</div>
-                    ) : (
-                        <div className="text-xs text-status-warning mt-1 flex items-center gap-1">
-                            Configuration incomplete
-                        </div>
-                    ))}
+                {/* Status Indicator (Corner) */}
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {data.isConfigured === false && <AlertTriangle className="w-3 h-3 text-status-warning" />}
                 </div>
 
                 {/* Delete Button */}
@@ -67,13 +48,19 @@ export function ToolTriggerNode({ id, data, isConnectable, selected }: ToolTrigg
                         e.stopPropagation();
                         deleteElements({ nodes: [{ id }] });
                     }}
-                    className="absolute top-0 right-4 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                    className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border border-border/60 shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
                 >
                     <X className="w-3 h-3" />
                 </button>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="border-white" style={{ backgroundColor: tool.color }} isConnectable={isConnectable} />
+            <Handle
+                type="source"
+                position={Position.Right}
+                isConnectable={isConnectable}
+                style={{ backgroundColor: tool.color }}
+                className="handle-right"
+            />
             <AddBlockMenu sourceId={id} />
         </div>
     );

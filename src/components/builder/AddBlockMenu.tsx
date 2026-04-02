@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { Mail, CheckSquare, Split } from 'lucide-react';
+import { Mail, CheckSquare, Split, Brain, Database, Sparkles } from 'lucide-react';
 
 export function AddBlockMenu({ sourceId, branch }: { sourceId: string, branch?: string }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -12,7 +12,7 @@ export function AddBlockMenu({ sourceId, branch }: { sourceId: string, branch?: 
         const sourceNode = nodes.find(n => n.id === sourceId);
         if (!sourceNode) return;
 
-        const position = { x: sourceNode.position.x, y: sourceNode.position.y + 150 };
+        const position = { x: sourceNode.position.x + 250, y: sourceNode.position.y };
         const isTrigger = type === 'trigger';
 
         const newNode = {
@@ -30,8 +30,8 @@ export function AddBlockMenu({ sourceId, branch }: { sourceId: string, branch?: 
             source: sourceId,
             target: newNode.id,
             sourceHandle,
-            type: 'smoothstep',
-            animated: true
+            type: 'custom',
+            animated: false
         }));
 
         setIsOpen(false);
@@ -49,20 +49,38 @@ export function AddBlockMenu({ sourceId, branch }: { sourceId: string, branch?: 
 
             {isOpen && (
                 <div className="absolute top-10 w-56 bg-white border border-border shadow-xl rounded-card overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200" onClick={e => e.stopPropagation()}>
-                    <div className="p-3 border-b border-border bg-background-canvas text-xs font-bold text-text-secondary uppercase tracking-wider">
+                    <div className="p-3 border-b border-border bg-background-canvas text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center justify-between">
                         Add Next Step
                     </div>
                     <div className="p-2 space-y-1">
                         <button className="w-full flex items-center gap-3 p-2 hover:bg-background-canvas rounded-btn transition-colors text-left" onClick={(e) => handleAdd(e, 'action', 'Send Email')}>
-                            <div className="w-6 h-6 rounded bg-status-info/10 flex items-center justify-center shrink-0"><Mail className="w-3 h-3 text-status-info" /></div>
+                            <div className="w-6 h-6 rounded bg-status-info/10 flex items-center justify-center shrink-0"><Mail className="w-3.5 h-3.5 text-status-info" /></div>
                             <span className="text-sm font-medium text-text-primary">Send Email</span>
                         </button>
                         <button className="w-full flex items-center gap-3 p-2 hover:bg-background-canvas rounded-btn transition-colors text-left" onClick={(e) => handleAdd(e, 'action', 'Create Task')}>
-                            <div className="w-6 h-6 rounded bg-status-info/10 flex items-center justify-center shrink-0"><CheckSquare className="w-3 h-3 text-status-info" /></div>
+                            <div className="w-6 h-6 rounded bg-status-info/10 flex items-center justify-center shrink-0"><CheckSquare className="w-3.5 h-3.5 text-status-info" /></div>
                             <span className="text-sm font-medium text-text-primary">Create Task</span>
                         </button>
+                        
+                        <div className="h-px bg-border my-1 mx-2"></div>
+                        
+                        <button className="w-full flex items-center gap-3 p-2 hover:bg-ai-accent/5 rounded-btn transition-colors text-left group" onClick={(e) => handleAdd(e, 'action', 'LLM')}>
+                            <div className="w-6 h-6 rounded bg-ai-accent/10 flex items-center justify-center shrink-0"><Brain className="w-3.5 h-3.5 text-ai-accent" /></div>
+                            <div className="flex-1">
+                                <div className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                                    LLM <Sparkles className="w-3 h-3 text-ai-accent/60" />
+                                </div>
+                            </div>
+                        </button>
+                        <button className="w-full flex items-center gap-3 p-2 hover:bg-ai-accent/5 rounded-btn transition-colors text-left group" onClick={(e) => handleAdd(e, 'action', 'RAG')}>
+                            <div className="w-6 h-6 rounded bg-ai-accent/10 flex items-center justify-center shrink-0"><Database className="w-3.5 h-3.5 text-ai-accent" /></div>
+                            <span className="text-sm font-medium text-text-primary">RAG</span>
+                        </button>
+
+                        <div className="h-px bg-border my-1 mx-2"></div>
+
                         <button className="w-full flex items-center gap-3 p-2 hover:bg-background-canvas rounded-btn transition-colors text-left" onClick={(e) => handleAdd(e, 'condition', 'Condition')}>
-                            <div className="w-6 h-6 rounded bg-status-warning/10 flex items-center justify-center shrink-0"><Split className="w-3 h-3 text-status-warning" /></div>
+                            <div className="w-6 h-6 rounded bg-status-warning/10 flex items-center justify-center shrink-0"><Split className="w-3.5 h-3.5 text-status-warning" /></div>
                             <span className="text-sm font-medium text-text-primary">Condition</span>
                         </button>
                     </div>

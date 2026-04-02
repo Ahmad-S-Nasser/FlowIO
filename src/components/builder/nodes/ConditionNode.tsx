@@ -12,68 +12,58 @@ export function ConditionNode({ id, data }: any) {
 
     return (
         <div className="relative group font-sans">
-            <div className="w-[320px] drop-shadow-sm hover:drop-shadow-md transition-all">
-                {/* Border Wrapper */}
-                <div className="clip-hexagon bg-border p-[1px]">
-                    <div className="clip-hexagon bg-white flex items-stretch min-h-[100px]">
-                        {/* Left Stripe */}
-                        <div className="w-8 flex shrink-0 bg-status-warning"></div>
-
-                        <div className="p-4 pl-2 flex-1 flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-status-warning/10 flex items-center justify-center shrink-0">
-                                <GitBranch className="w-5 h-5 text-status-warning" />
-                            </div>
-                            <div className="flex-1 min-w-0 pr-4">
-                                <div className="text-xs font-bold text-status-warning uppercase tracking-wider mb-1 flex items-center justify-between">
-                                    Condition
-                                    {(!data.isConfigured && data.label !== 'If / Else') && <AlertTriangle className="w-3 h-3 text-status-error" />}
-                                </div>
-                                <div className="text-sm font-bold text-text-primary truncate">{data.label || 'If / Else'}</div>
-
-                                {data.configSummary ? (
-                                    <div className="mt-2 text-xs bg-status-warning/5 rounded p-2 text-text-secondary border border-status-warning/10 space-y-1">
-                                        {Object.entries(data.configSummary).map(([k, v]) => (
-                                            <div key={k} className="truncate"><span className="font-medium text-text-primary">{k}:</span> {v as React.ReactNode}</div>
-                                        ))}
-                                    </div>
-                                ) : (data.description ? (
-                                    <div className="text-xs text-text-secondary mt-1 line-clamp-2">{data.description}</div>
-                                ) : (
-                                    <div className="text-xs text-status-error mt-1 flex items-center gap-1">
-                                        Configuration incomplete
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Delete Button */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                deleteElements({ nodes: [{ id }] });
-                            }}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
-                        >
-                            <X className="w-3 h-3" />
-                        </button>
+            <div className="w-[180px] h-[72px] bg-white rounded-lg border border-border shadow-soft flex items-center p-2.5 gap-3 transition-all hover:border-primary/40 hover:shadow-node-hover">
+                <div className="w-10 h-10 rounded-md bg-status-warning flex items-center justify-center shrink-0 shadow-sm">
+                    <GitBranch className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0 pr-1 text-left">
+                    <div className="text-[11px] font-bold text-text-primary leading-tight truncate">
+                        {data.label || 'If / Else'}
+                    </div>
+                    <div className="text-[9px] font-medium text-status-warning uppercase tracking-tight mt-0.5">
+                        Logic
                     </div>
                 </div>
+
+                {/* Status Indicator (Corner) */}
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!data.isConfigured && <AlertTriangle className="w-3 h-3 text-status-error" />}
+                </div>
+
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-white border border-border/60 shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
-            <Handle type="target" position={Position.Top} className="handle-warning" />
+            <Handle type="target" position={Position.Left} className="handle-warning handle-left" />
 
-            {/* Dynamic branches */}
-            <div className="absolute -bottom-8 left-0 right-0 flex justify-around px-4">
+            {/* Dynamic branches - Stacked on the right */}
+            <div className="absolute top-0 bottom-0 -right-[4px] flex flex-col justify-around py-2 h-full z-10">
                 {branches.map((branch: any) => {
-                    const colorClass = branch.color === 'success' ? 'text-status-success handle-success' : 'text-text-secondary handle-warning';
+                    const colorClass = branch.color === 'success' ? 'handle-success' : 'handle-warning';
+                    const textColor = branch.color === 'success' ? 'text-status-success' : 'text-status-warning';
                     
                     return (
-                        <div key={branch.id} className="relative flex flex-col items-center">
-                            <span className={`text-xs font-bold ${colorClass.split(' ')[0]} bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max`}>
+                        <div key={branch.id} className="relative flex items-center justify-end h-8">
+                            <span className={`mr-2 text-[8px] font-bold ${textColor} bg-white px-1 rounded border border-border/40 shadow-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none uppercase`}>
                                 {branch.label}
                             </span>
-                            <Handle type="source" position={Position.Bottom} id={branch.id} className={`!relative !transform-none !left-auto !bottom-auto ${colorClass.split(' ')[1]} translate-y-2 z-0`} />
-                            <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch={branch.id} /></div>
+                            <Handle 
+                                type="source" 
+                                position={Position.Right} 
+                                id={branch.id} 
+                                className={`${colorClass} handle-right !static !transform-none`} 
+                            />
+                            <div className="absolute left-full ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <AddBlockMenu sourceId={id} branch={branch.id} />
+                            </div>
                         </div>
                     );
                 })}

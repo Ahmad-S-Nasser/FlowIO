@@ -12,61 +12,52 @@ export function ParallelNode({ id, data }: any) {
 
     return (
         <div className="relative group font-sans">
-            <div className="w-[320px] drop-shadow-sm hover:drop-shadow-md transition-all">
-                {/* Border Wrapper */}
-                <div className="bg-white rounded-md border border-border flex items-stretch min-h-[100px] overflow-hidden">
-                    {/* Left Stripe */}
-                    <div className="w-4 bg-status-info shrink-0"></div>
-
-                    <div className="p-4 flex-1 flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-status-info/10 flex items-center justify-center shrink-0">
-                            <Network className="w-5 h-5 text-status-info" />
-                        </div>
-                        <div className="flex-1 min-w-0 pr-4">
-                            <div className="text-xs font-bold text-status-info uppercase tracking-wider mb-1 flex items-center justify-between">
-                                Parallel
-                                {(!data.isConfigured && data.label !== 'Parallel Actions') && <AlertTriangle className="w-3 h-3 text-status-warning" />}
-                            </div>
-                            <div className="text-sm font-bold text-text-primary truncate">{data.label || 'Parallel Actions'}</div>
-
-                            {data.configSummary ? (
-                                <div className="mt-2 text-xs bg-status-info/5 rounded p-2 text-text-secondary border border-status-info/10 space-y-1">
-                                    {Object.entries(data.configSummary).map(([k, v]) => (
-                                        <div key={k} className="truncate"><span className="font-medium text-text-primary">{k}:</span> {v as React.ReactNode}</div>
-                                    ))}
-                                </div>
-                            ) : (data.description ? (
-                                <div className="text-xs text-text-secondary mt-1 line-clamp-2">{data.description}</div>
-                            ) : (
-                                <div className="text-xs text-status-warning mt-1 flex items-center gap-1">
-                                    Configuration incomplete
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Delete Button */}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            deleteElements({ nodes: [{ id }] });
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
-                    >
-                        <X className="w-3 h-3" />
-                    </button>
+            <div className="w-[180px] h-[72px] bg-white rounded-lg border border-border shadow-soft flex items-center p-2.5 gap-3 transition-all hover:border-primary/40 hover:shadow-node-hover">
+                <div className="w-10 h-10 rounded-md bg-status-info flex items-center justify-center shrink-0 shadow-sm">
+                    <Network className="w-6 h-6 text-white" />
                 </div>
+                <div className="flex-1 min-w-0 pr-1 text-left">
+                    <div className="text-[11px] font-bold text-text-primary leading-tight truncate">
+                        {data.label || 'Parallel Actions'}
+                    </div>
+                    <div className="text-[9px] font-medium text-status-info uppercase tracking-tight mt-0.5">
+                        Parallel
+                    </div>
+                </div>
+
+                {/* Status Indicator (Corner) */}
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!data.isConfigured && <AlertTriangle className="w-3 h-3 text-status-warning" />}
+                </div>
+
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteElements({ nodes: [{ id }] });
+                    }}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-white border border-border/60 shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                >
+                    <X className="w-3 h-3" />
+                </button>
             </div>
 
-            <Handle type="target" position={Position.Top} className="handle-info" />
+            <Handle type="target" position={Position.Left} className="handle-info handle-left" />
 
-            {/* Dynamic Parallel branches */}
-            <div className="absolute -bottom-8 left-0 right-0 flex justify-around px-4">
+            {/* Dynamic Parallel branches - Stacked on the right */}
+            <div className="absolute top-0 bottom-0 -right-[4px] flex flex-col justify-around py-2 h-full z-10">
                 {branches.map((branch: any) => (
-                    <div key={branch.id} className="relative flex flex-col items-center">
-                        <span className="text-xs font-bold text-text-secondary bg-white px-3 py-0.5 rounded-full border border-border shadow-sm translate-y-2 z-10 w-max">{branch.label}</span>
-                        <Handle type="source" position={Position.Bottom} id={branch.id} className="!relative !transform-none !left-auto !bottom-auto handle-info translate-y-2 z-0" />
-                        <div className="absolute top-full mt-4"><AddBlockMenu sourceId={id} branch={branch.id} /></div>
+                    <div key={branch.id} className="relative flex items-center justify-end h-8">
+                        <span className="mr-2 text-[8px] font-bold text-text-secondary bg-white px-1 rounded border border-border/40 shadow-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none uppercase">{branch.label}</span>
+                        <Handle 
+                            type="source" 
+                            position={Position.Right} 
+                            id={branch.id} 
+                            className="handle-info handle-right !static !transform-none" 
+                        />
+                        <div className="absolute left-full ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <AddBlockMenu sourceId={id} branch={branch.id} />
+                        </div>
                     </div>
                 ))}
             </div>

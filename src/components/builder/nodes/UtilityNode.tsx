@@ -1,5 +1,5 @@
 import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { RotateCw, ShieldAlert, X } from 'lucide-react';
+import { RotateCw, ShieldAlert, X, AlertTriangle } from 'lucide-react';
 import { AddBlockMenu } from '../AddBlockMenu';
 
 export function UtilityNode({ id, data, isConnectable, selected }: any) {
@@ -10,37 +10,23 @@ export function UtilityNode({ id, data, isConnectable, selected }: any) {
     const textColorClass = isRetry ? 'text-status-info' : 'text-status-error';
 
     return (
-        <div className={`relative group font-sans flex flex-col rounded-md transition-all duration-200 border-2 z-10 
-                        ${selected ? 'border-primary shadow-node-selected' : 'border-transparent'}`}>
-            <Handle
-                type="target"
-                position={Position.Top}
-                className={`-top-1.5 ${isRetry ? 'handle-info' : 'handle-error'}`}
-                isConnectable={isConnectable}
-            />
-
-            <div className="w-[280px] bg-white rounded-md shadow-node flex items-stretch overflow-visible transition-all hover:shadow-md">
-                <div className={`w-2.5 shrink-0 rounded-l-md ${bgColorClass}`}></div>
-                <div className="p-4 pl-4 flex-1 flex flex-col justify-center min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className={`p-1 rounded-sm text-white ${bgColorClass}`}>
-                            <Icon className="w-4 h-4" />
-                        </div>
-                        <span className={`text-xs font-bold uppercase tracking-wider ${textColorClass}`}>
-                            {isRetry ? 'Utility Flow' : 'Error Handling'}
-                        </span>
+        <div className="relative group font-sans">
+            <div className={`w-[180px] h-[64px] bg-white rounded-lg border border-border shadow-soft flex items-center p-2.5 gap-3 transition-all hover:border-primary/40 hover:shadow-node-hover ${selected ? 'border-primary shadow-node-hover' : ''}`}>
+                <div className={`w-10 h-10 rounded-md ${bgColorClass} flex items-center justify-center shrink-0 shadow-sm text-white`}>
+                    <Icon className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0 pr-1 text-left">
+                    <div className="text-[11px] font-bold text-text-primary leading-tight truncate">
+                        {data.label || 'Utility'}
                     </div>
-                    <div className="text-sm font-bold text-text-primary truncate">{data.label}</div>
+                    <div className={`text-[9px] font-medium ${textColorClass} uppercase tracking-tight mt-0.5`}>
+                        {isRetry ? 'Utility' : 'Error'}
+                    </div>
+                </div>
 
-                    {data.configSummary && Object.keys(data.configSummary).length > 0 ? (
-                        <div className="mt-2 text-xs bg-background-canvas rounded p-2 text-text-secondary border border-border space-y-1">
-                            {Object.entries(data.configSummary).map(([k, v]) => (
-                                <div key={k} className="truncate"><span className="font-medium text-text-primary">{k}:</span> {v as React.ReactNode}</div>
-                            ))}
-                        </div>
-                    ) : (data.description ? (
-                        <div className="text-xs text-text-secondary mt-1 line-clamp-2">{data.description}</div>
-                    ) : null)}
+                {/* Status Indicator (Corner) */}
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!data.isConfigured && <AlertTriangle className="w-3 h-3 text-status-warning" />}
                 </div>
 
                 {/* Delete Button */}
@@ -49,16 +35,22 @@ export function UtilityNode({ id, data, isConnectable, selected }: any) {
                         e.stopPropagation();
                         deleteElements({ nodes: [{ id }] });
                     }}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-border shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
+                    className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border border-border/60 shadow-sm rounded-full flex items-center justify-center text-text-muted hover:text-status-error hover:border-status-error opacity-0 group-hover:opacity-100 transition-all z-20"
                 >
                     <X className="w-3 h-3" />
                 </button>
             </div>
 
             <Handle
+                type="target"
+                position={Position.Left}
+                className={`${isRetry ? 'handle-info handle-left' : 'handle-error handle-left'}`}
+                isConnectable={isConnectable}
+            />
+            <Handle
                 type="source"
-                position={Position.Bottom}
-                className={`-bottom-1.5 z-10 ${isRetry ? 'handle-info' : 'handle-error'}`}
+                position={Position.Right}
+                className={`${isRetry ? 'handle-info handle-right' : 'handle-error handle-right'}`}
                 isConnectable={isConnectable}
             />
             <AddBlockMenu sourceId={id} />
